@@ -1,20 +1,41 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# JIRÉH Panadería y Pastelería — sitio web (demo)
 
-# Run and deploy your AI Studio app
+Catálogo de tortas, personalización y pedidos por WhatsApp para JIRÉH (Cajamarca).
+React 19 + Vite + Tailwind 4. El catálogo y el panel de administración usan **Supabase** (plan gratuito).
 
-This contains everything you need to run your app locally.
+## Correr en local
 
-View your app in AI Studio: https://ai.studio/apps/778542c8-93f6-46fc-9cd9-2b0165bc338a
+```bash
+npm install
+cp .env.example .env.local   # completar VITE_SUPABASE_URL y VITE_SUPABASE_KEY
+npm run dev                  # http://localhost:3001
+```
 
-## Run Locally
+| Comando | Qué hace |
+|---|---|
+| `npm run dev` | Servidor local en el puerto 3001 |
+| `npm run build` | Build de producción en `dist/` |
+| `npm run lint` | Revisión de tipos (TypeScript) |
+| `npm test` | Tests (`src/**/*.test.ts`) |
 
-**Prerequisites:**  Node.js
+## Estructura
 
+```
+src/
+  App.tsx                 tienda (secciones y modales)
+  components/             secciones de la tienda
+  data/bakeryData.ts      textos y catálogo de respaldo
+  lib/supabase.ts         configuración de Supabase
+  lib/catalog.ts          catálogo público (lee Supabase; si falla, usa el de respaldo)
+  admin/                  panel /#admin (se descarga solo al entrar)
+    AdminApp.tsx          inicio de sesión, cambio de clave temporal, cierre por inactividad
+    AdminProductsPage.tsx catálogo, formulario de torta, ajustes
+    adminApi.ts           operaciones contra Supabase
+supabase/                 migraciones SQL y catálogo inicial (ver supabase/README.md)
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Panel de administración
+
+Entrar a `/#admin`. La cuenta de la demo y su clave temporal están en `.admin-temporal.txt`
+(no se sube a git). En el primer ingreso el panel obliga a crear una contraseña propia; mientras tanto
+la base de datos no permite editar nada.

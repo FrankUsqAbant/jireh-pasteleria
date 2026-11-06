@@ -13,6 +13,8 @@ export interface CakeItem {
   portions: string;
   basePrice: number;
   image: string;
+  /** Ruta de la foto en Supabase Storage (solo si se subió desde el panel). */
+  imagePath?: string;
   badge?: string;
   isPopular?: boolean;
   isCustomizable?: boolean;

@@ -11,3 +11,4 @@ coverage/
 .env.local
 .aistudio/
 .claude/settings.local.json
+.admin-temporal.txt

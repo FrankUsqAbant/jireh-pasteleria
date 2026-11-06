@@ -1,41 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ArrowLeft, Plus, Edit3, Trash2, Shield, Lock, Unlock, KeyRound, 
-  RotateCcw, Search, Sparkles, Star, Check, AlertCircle, Image as ImageIcon,
-  DollarSign, Layers, Tag, Eye, LayoutGrid, List, Download, Upload,
-  CheckCircle2, ArrowUpDown, ChevronRight, Store, RefreshCw
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ArrowLeft, Plus, Edit3, Trash2, Lock, KeyRound, Search, Star, Check, AlertCircle, Image as ImageIcon,
+  DollarSign, Layers, Tag, Eye, LayoutGrid, List, Download, Upload, CheckCircle2, Store, RefreshCw, Sparkles,
 } from 'lucide-react';
-import { CakeCategory, CakeItem } from '../types/bakery';
+import type { CakeCategory, CakeItem } from '../types/bakery';
 import { CAKE_CATEGORIES, LOGO_URL } from '../data/bakeryData';
-import { 
-  PRESET_PRODUCT_IMAGES, 
-  getAdminPin, 
-  setAdminPin as persistAdminPin, 
-  DEFAULT_ADMIN_PIN 
-} from '../utils/productStore';
+import { PRESET_PRODUCT_IMAGES } from './presetImages';
+import {
+  changePassword, createCake, deleteCake, deletePhoto, friendlyError, listCakes, updateCake, uploadPhoto,
+} from './adminApi';
 
 interface AdminProductsPageProps {
   onBackToStore: () => void;
-  products: CakeItem[];
-  onSaveProducts: (products: CakeItem[]) => void;
-  onResetProducts: () => void;
+  onLogout: () => void;
 }
 
-export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
-  onBackToStore,
-  products,
-  onSaveProducts,
-  onResetProducts,
-}) => {
-  // Auth state
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('jireh_admin_auth') === 'true';
-    }
-    return false;
-  });
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState(false);
+const DEFAULT_FLAVORS = 'Vainilla, Chocolate, Marmoleado';
+const DEFAULT_FILLINGS = 'Fudge casero, Manjar blanco cajamarquino';
+const splitList = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+
+/** Espacio de trabajo del administrador: catálogo, formulario de torta y ajustes de cuenta. */
+export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ onBackToStore, onLogout }) => {
+  // Catálogo (desde Supabase)
+  const [products, setProducts] = useState<CakeItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Active view tab
   const [activeTab, setActiveTab] = useState<'catalog' | 'new_product' | 'settings'>('catalog');
@@ -58,196 +48,221 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
   const [formPortions, setFormPortions] = useState('20-25 porciones');
   const [formPrice, setFormPrice] = useState<number>(85);
   const [formImage, setFormImage] = useState(PRESET_PRODUCT_IMAGES[0].url);
+  /** Ruta en Storage de la foto subida en este formulario (si la hay). */
+  const [formImagePath, setFormImagePath] = useState<string | undefined>();
+  const [uploading, setUploading] = useState(false);
   const [formBadge, setFormBadge] = useState('');
   const [formIsPopular, setFormIsPopular] = useState(false);
   const [formIsCustomizable, setFormIsCustomizable] = useState(true);
-  const [formFlavors, setFormFlavors] = useState('Vainilla, Chocolate, Marmoleado');
-  const [formFillings, setFormFillings] = useState('Fudge casero, Manjar blanco cajamarquino');
+  const [formFlavors, setFormFlavors] = useState(DEFAULT_FLAVORS);
+  const [formFillings, setFormFillings] = useState(DEFAULT_FILLINGS);
 
   // Settings State
-  const [newPin, setNewPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [pinSuccessMsg, setPinSuccessMsg] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Auth handler
-  const handleVerifyPin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const storedPin = getAdminPin();
-    if (pinInput.trim() === storedPin) {
-      setIsAuthenticated(true);
-      setPinError(false);
-      setPinInput('');
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('jireh_admin_auth', 'true');
-      }
-      showToast('¡Bienvenido al Panel de Administración JIRÉH!');
-    } else {
-      setPinError(true);
-    }
-  };
+  const fail = (err: unknown) => setErrorMessage(friendlyError(err));
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('jireh_admin_auth');
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      setProducts(await listCakes());
+      setErrorMessage(null);
+    } catch (err) {
+      fail(err);
+    } finally {
+      setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  /** Descarta una foto subida en el formulario que no llegó a guardarse. */
+  const discardUnsavedPhoto = () => {
+    if (formImagePath && formImagePath !== editingProduct?.imagePath) void deletePhoto(formImagePath);
   };
 
   // Form reset / open
   const startNewProduct = () => {
+    discardUnsavedPhoto();
     setFormName('');
     setFormCategory('cumpleanos');
     setFormDescription('');
     setFormPortions('20-25 porciones');
     setFormPrice(85);
     setFormImage(PRESET_PRODUCT_IMAGES[0].url);
+    setFormImagePath(undefined);
     setFormBadge('');
     setFormIsPopular(false);
     setFormIsCustomizable(true);
-    setFormFlavors('Vainilla, Chocolate, Marmoleado');
-    setFormFillings('Fudge casero, Manjar blanco cajamarquino');
+    setFormFlavors(DEFAULT_FLAVORS);
+    setFormFillings(DEFAULT_FILLINGS);
     setEditingProduct(null);
     setActiveTab('new_product');
   };
 
   const startEditProduct = (item: CakeItem) => {
+    discardUnsavedPhoto();
     setFormName(item.name);
     setFormCategory(item.category);
     setFormDescription(item.description);
     setFormPortions(item.portions);
     setFormPrice(item.basePrice);
     setFormImage(item.image);
+    setFormImagePath(item.imagePath);
     setFormBadge(item.badge || '');
     setFormIsPopular(Boolean(item.isPopular));
     setFormIsCustomizable(Boolean(item.isCustomizable));
-    setFormFlavors(item.flavors ? item.flavors.join(', ') : 'Vainilla, Chocolate, Marmoleado');
-    setFormFillings(item.fillings ? item.fillings.join(', ') : 'Fudge casero, Manjar blanco cajamarquino');
+    setFormFlavors(item.flavors ? item.flavors.join(', ') : DEFAULT_FLAVORS);
+    setFormFillings(item.fillings ? item.fillings.join(', ') : DEFAULT_FILLINGS);
     setEditingProduct(item);
     setActiveTab('new_product');
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formName.trim() || formPrice <= 0) return;
-
-    const flavorsArray = formFlavors.split(',').map((s) => s.trim()).filter(Boolean);
-    const fillingsArray = formFillings.split(',').map((s) => s.trim()).filter(Boolean);
-
-    if (editingProduct) {
-      const updated: CakeItem = {
-        ...editingProduct,
-        name: formName.trim(),
-        category: formCategory,
-        description: formDescription.trim(),
-        portions: formPortions.trim(),
-        basePrice: Number(formPrice),
-        image: formImage.trim() || editingProduct.image,
-        badge: formBadge.trim() || undefined,
-        isPopular: formIsPopular,
-        isCustomizable: formIsCustomizable,
-        flavors: flavorsArray.length > 0 ? flavorsArray : undefined,
-        fillings: fillingsArray.length > 0 ? fillingsArray : undefined,
-      };
-      const newList = products.map((p) => (p.id === updated.id ? updated : p));
-      onSaveProducts(newList);
-      showToast(`¡Torta "${updated.name}" actualizada con éxito!`);
-    } else {
-      const newProduct: CakeItem = {
-        id: `prod-${Date.now()}`,
-        name: formName.trim(),
-        category: formCategory,
-        description: formDescription.trim() || 'Elaborada artesanalmente con ingredientes seleccionados de Cajamarca.',
-        portions: formPortions.trim() || '20-25 porciones',
-        basePrice: Number(formPrice),
-        image: formImage.trim() || PRESET_PRODUCT_IMAGES[0].url,
-        badge: formBadge.trim() || undefined,
-        isPopular: formIsPopular,
-        isCustomizable: formIsCustomizable,
-        flavors: flavorsArray.length > 0 ? flavorsArray : undefined,
-        fillings: fillingsArray.length > 0 ? fillingsArray : undefined,
-      };
-      onSaveProducts([newProduct, ...products]);
-      showToast(`¡Torta "${newProduct.name}" agregada con éxito!`);
-    }
-
+  const cancelForm = () => {
+    discardUnsavedPhoto();
+    setFormImagePath(undefined);
     setEditingProduct(null);
     setActiveTab('catalog');
   };
 
-  const handleTogglePopular = (item: CakeItem) => {
-    const updated = products.map((p) => {
-      if (p.id === item.id) {
-        return { ...p, isPopular: !p.isPopular };
-      }
-      return p;
-    });
-    onSaveProducts(updated);
-    showToast(`Estado de destacada en portada actualizado para "${item.name}"`);
+  const handlePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    try {
+      discardUnsavedPhoto();
+      const { url, path } = await uploadPhoto(file);
+      setFormImage(url);
+      setFormImagePath(path);
+    } catch (err) {
+      fail(err);
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const handleDeleteProduct = () => {
-    if (!productToDelete) return;
-    const updated = products.filter((p) => p.id !== productToDelete.id);
-    onSaveProducts(updated);
-    showToast(`Producto "${productToDelete.name}" eliminado del catálogo.`);
-    setProductToDelete(null);
+  const choosePreset = (url: string) => {
+    discardUnsavedPhoto();
+    setFormImage(url);
+    setFormImagePath(undefined);
   };
 
-  const handleUpdatePin = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPin.length >= 4 && newPin === confirmPin) {
-      persistAdminPin(newPin);
-      setNewPin('');
-      setConfirmPin('');
-      setPinSuccessMsg(true);
-      setTimeout(() => setPinSuccessMsg(false), 3000);
-      showToast('PIN de acceso actualizado correctamente.');
+    if (!formName.trim() || formPrice <= 0 || busy) return;
+
+    const flavors = splitList(formFlavors);
+    const fillings = splitList(formFillings);
+    const data: Omit<CakeItem, 'id'> = {
+      name: formName.trim(),
+      category: formCategory,
+      description: formDescription.trim() || 'Elaborada artesanalmente con ingredientes seleccionados de Cajamarca.',
+      portions: formPortions.trim() || '20-25 porciones',
+      basePrice: Number(formPrice),
+      image: formImage,
+      imagePath: formImagePath,
+      badge: formBadge.trim() || undefined,
+      isPopular: formIsPopular,
+      isCustomizable: formIsCustomizable,
+      flavors: flavors.length ? flavors : undefined,
+      fillings: fillings.length ? fillings : undefined,
+    };
+
+    setBusy(true);
+    try {
+      if (editingProduct) {
+        const saved = await updateCake(editingProduct.id, data, editingProduct.imagePath);
+        setProducts((list) => list.map((p) => (p.id === saved.id ? saved : p)));
+        showToast(`Torta "${saved.name}" actualizada.`);
+      } else {
+        const saved = await createCake(data);
+        setProducts((list) => [saved, ...list]);
+        showToast(`Torta "${saved.name}" publicada.`);
+      }
+      setFormImagePath(undefined);
+      setEditingProduct(null);
+      setActiveTab('catalog');
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleTogglePopular = async (item: CakeItem) => {
+    try {
+      const saved = await updateCake(item.id, { ...item, isPopular: !item.isPopular });
+      setProducts((list) => list.map((p) => (p.id === saved.id ? saved : p)));
+      showToast(`"${item.name}" ${saved.isPopular ? 'ahora es destacada' : 'ya no es destacada'}.`);
+    } catch (err) {
+      fail(err);
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
+    setBusy(true);
+    try {
+      await deleteCake(productToDelete);
+      setProducts((list) => list.filter((p) => p.id !== productToDelete.id));
+      showToast(`"${productToDelete.name}" eliminada del catálogo.`);
+      setProductToDelete(null);
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const passwordValid = newPassword.length >= 10 && newPassword === confirmPassword;
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordValid) return;
+    setBusy(true);
+    try {
+      await changePassword(newPassword);
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordSuccess(true);
+      setTimeout(() => setPasswordSuccess(false), 3000);
+      showToast('Contraseña actualizada.');
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleExportJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(products, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `catalogo_jireh_backup_${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    const blob = new Blob([JSON.stringify(products, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `catalogo_jireh_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
     showToast('Copia de seguridad descargada.');
   };
 
-  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target?.result as string);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          onSaveProducts(parsed);
-          showToast(`Se importaron ${parsed.length} productos correctamente.`);
-        } else {
-          alert('El archivo no contiene un catálogo válido de productos.');
-        }
-      } catch (err) {
-        alert('Error al leer el archivo JSON.');
-      }
-    };
-    reader.readAsText(file);
-  };
-
   // Filter & Sort
+  const query = searchQuery.toLowerCase();
   const filteredProducts = products.filter((p) => {
     const matchCat = categoryFilter === 'todos' || p.category === categoryFilter;
     const matchSearch =
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.portions.toLowerCase().includes(searchQuery.toLowerCase());
+      p.name.toLowerCase().includes(query) ||
+      p.description.toLowerCase().includes(query) ||
+      p.portions.toLowerCase().includes(query);
     return matchCat && matchSearch;
   });
 
@@ -265,87 +280,10 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
   // KPI Calculations
   const totalProducts = products.length;
   const featuredCount = products.filter((p) => p.isPopular).length;
-  const avgPrice = totalProducts > 0 
+  const avgPrice = totalProducts > 0
     ? Math.round(products.reduce((acc, p) => acc + p.basePrice, 0) / totalProducts)
     : 0;
 
-  // =========================================================================
-  // VIEW 1: FULL PAGE AUTHENTICATION GATE
-  // =========================================================================
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#0e0805] text-[#faf3e8] flex flex-col items-center justify-center p-4 selection:bg-[#d69c4f] selection:text-[#150e09]">
-        
-        {/* Subtle Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-[#d69c4f]/10 rounded-full blur-[140px] pointer-events-none" />
-
-        {/* Back link */}
-        <div className="mb-6 z-10">
-          <button
-            onClick={onBackToStore}
-            className="inline-flex items-center gap-2 text-xs text-[#dfcca9] hover:text-[#faf3e8] bg-[#1a110a] hover:bg-[#28180e] border border-[#3d2719] px-4 py-2 rounded-full transition-all cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4 text-[#e8b66f]" />
-            <span>Volver a la Tienda Web</span>
-          </button>
-        </div>
-
-        {/* Auth Box */}
-        <div className="max-w-md w-full bg-[#150e09] border border-[#d69c4f]/40 rounded-3xl p-8 sm:p-10 text-center shadow-2xl relative z-10">
-          
-          <div className="w-20 h-20 rounded-full bg-[#faf3e8] border-2 border-[#d69c4f] p-1 mx-auto mb-5 shadow-lg overflow-hidden">
-            <img src={LOGO_URL} alt="JIRÉH Logo" className="w-full h-full object-cover rounded-full" />
-          </div>
-
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#faf3e8] mb-1">
-            Panel de Administración
-          </h1>
-          <p className="text-xs text-[#dfcca9] mb-6">
-            JIRÉH Panadería y Pastelería — Gestión de Catálogo y Tortas
-          </p>
-
-          <form onSubmit={handleVerifyPin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#a89078] mb-2">
-                Ingresa el PIN de seguridad
-              </label>
-              <input
-                type="password"
-                maxLength={10}
-                value={pinInput}
-                onChange={(e) => {
-                  setPinInput(e.target.value);
-                  setPinError(false);
-                }}
-                placeholder="••••"
-                autoFocus
-                className="w-full text-center tracking-[0.5em] font-mono text-2xl py-3 px-4 rounded-xl bg-[#0b0604] border border-[#d69c4f]/40 text-[#faf3e8] placeholder:tracking-normal placeholder:font-sans placeholder:text-xs placeholder:text-[#88705b] focus:outline-none focus:border-[#e8b66f]"
-              />
-              {pinError && (
-                <p className="text-xs text-red-400 mt-2 flex items-center justify-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" /> PIN incorrecto. Intenta con 1234
-                </p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-[#b97f33] to-[#d69c4f] hover:from-[#c88d3d] hover:to-[#e4ac61] text-[#150e09] font-bold text-sm tracking-wide shadow-xl transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Ingresar al Administrador
-            </button>
-          </form>
-
-          <div className="mt-8 pt-5 border-t border-[#2d1b11] text-[11px] text-[#a89078] flex items-center justify-between">
-            <span>PIN predeterminado: <strong className="text-[#e8b66f] font-mono">1234</strong></span>
-            <span className="text-[#7d6754]">Cajamarca, Perú</span>
-          </div>
-
-        </div>
-
-      </div>
-    );
-  }
 
   // =========================================================================
   // VIEW 2: FULL-PAGE ADMIN DASHBOARD & WORKSPACE
@@ -358,6 +296,17 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#d69c4f] text-[#150e09] px-5 py-2.5 rounded-full font-bold text-xs sm:text-sm shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
           <CheckCircle2 className="w-4 h-4" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Error del servidor */}
+      {errorMessage && (
+        <div role="alert" className="fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-[calc(100vw-2rem)] bg-[#2a1313] border border-red-500/50 text-red-100 px-5 py-2.5 rounded-2xl text-xs sm:text-sm shadow-2xl flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 shrink-0 text-red-300" />
+          <span>{errorMessage}</span>
+          <button onClick={() => setErrorMessage(null)} className="ml-1 underline text-red-200 hover:text-white cursor-pointer">
+            Cerrar
+          </button>
         </div>
       )}
 
@@ -405,11 +354,11 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
             }`}
           >
             <KeyRound className="w-3.5 h-3.5 inline mr-1 text-[#e8b66f]" />
-            <span className="hidden sm:inline">Ajustes & PIN</span>
+            <span className="hidden sm:inline">Ajustes y Contraseña</span>
           </button>
 
           <button
-            onClick={handleLogout}
+            onClick={onLogout}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#251911] hover:bg-[#342216] border border-[#39261a] text-xs text-[#dfcca9] hover:text-[#faf3e8] transition-colors cursor-pointer"
             title="Cerrar sesión de administrador"
           >
@@ -594,8 +543,12 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
               </div>
             </div>
 
-            {/* Empty state */}
-            {sortedProducts.length === 0 ? (
+            {/* Cargando / vacío */}
+            {loading && products.length === 0 ? (
+              <div className="text-center py-16 bg-[#150e09] rounded-3xl border border-[#2d1b11]" aria-live="polite">
+                <p className="text-sm text-[#dfcca9]">Cargando catálogo…</p>
+              </div>
+            ) : sortedProducts.length === 0 ? (
               <div className="text-center py-16 bg-[#150e09] rounded-3xl border border-dashed border-[#39261a]">
                 <p className="text-base text-[#dfcca9] mb-3">No se encontraron tortas con los filtros actuales.</p>
                 <button
@@ -807,10 +760,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
                 </p>
               </div>
               <button
-                onClick={() => {
-                  setEditingProduct(null);
-                  setActiveTab('catalog');
-                }}
+                onClick={cancelForm}
                 className="px-3.5 py-1.5 rounded-xl border border-[#39261a] text-xs text-[#dfcca9] hover:bg-[#251911]"
               >
                 Volver al Catálogo
@@ -924,16 +874,29 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
                 {/* Photo Presets & Custom Image */}
                 <div>
                   <label className="block text-xs font-semibold text-[#faf3e8] mb-1.5">
-                    Foto del Producto (Elige una foto real o escribe URL)
+                    Foto del Producto (sube una foto o elige una del sitio)
                   </label>
-                  
+
+                  {/* Subir foto propia */}
+                  <label className={`mb-2.5 w-full py-3 px-4 rounded-xl border border-dashed border-[#d69c4f]/50 bg-[#1f130b] hover:bg-[#2c1b10] text-xs text-[#faf3e8] font-semibold flex items-center justify-center gap-2 transition-colors focus-within:ring-2 focus-within:ring-[#d69c4f] ${uploading ? 'cursor-wait opacity-70' : 'cursor-pointer'}`}>
+                    <Upload className="w-4 h-4 text-[#e8b66f]" />
+                    <span>{uploading ? 'Subiendo foto…' : formImagePath ? 'Foto subida · cambiar por otra' : 'Subir foto (JPG, PNG o WebP · máx. 5 MB)'}</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handlePhotoFile}
+                      disabled={uploading}
+                      className="sr-only"
+                    />
+                  </label>
+
                   {/* Preset thumbnails */}
-                  <div className="grid grid-cols-5 gap-2 p-2 bg-[#0a0604] rounded-xl border border-[#2d1b11] mb-2.5 max-h-32 overflow-y-auto">
+                  <div className="grid grid-cols-5 gap-2 p-2 bg-[#0a0604] rounded-xl border border-[#2d1b11] max-h-32 overflow-y-auto">
                     {PRESET_PRODUCT_IMAGES.map((preset, idx) => (
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => setFormImage(preset.url)}
+                        onClick={() => choosePreset(preset.url)}
                         className={`relative rounded-lg overflow-hidden h-14 border transition-all cursor-pointer ${
                           formImage === preset.url
                             ? 'border-[#d69c4f] ring-2 ring-[#d69c4f]/50 scale-105'
@@ -945,14 +908,6 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
                       </button>
                     ))}
                   </div>
-
-                  <input
-                    type="text"
-                    value={formImage}
-                    onChange={(e) => setFormImage(e.target.value)}
-                    placeholder="/assets/cropped/... o enlace web https://"
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs text-[#faf3e8] font-mono focus:outline-none focus:border-[#d69c4f]"
-                  />
                 </div>
 
                 {/* Checkboxes */}
@@ -1011,17 +966,15 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
                 <div className="pt-4 flex items-center justify-start gap-3">
                   <button
                     type="submit"
-                    className="px-7 py-3 rounded-xl bg-gradient-to-r from-[#b97f33] to-[#d69c4f] hover:from-[#c88d3d] hover:to-[#e4ac61] text-[#150e09] font-bold text-sm tracking-wide shadow-xl transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                    disabled={busy || uploading}
+                    className="px-7 py-3 rounded-xl bg-gradient-to-r from-[#b97f33] to-[#d69c4f] hover:from-[#c88d3d] hover:to-[#e4ac61] text-[#150e09] font-bold text-sm tracking-wide shadow-xl transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait"
                   >
-                    {editingProduct ? 'Guardar Cambios del Producto' : 'Crear y Publicar Torta'}
+                    {busy ? 'Guardando…' : editingProduct ? 'Guardar Cambios del Producto' : 'Crear y Publicar Torta'}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setEditingProduct(null);
-                      setActiveTab('catalog');
-                    }}
+                    onClick={cancelForm}
                     className="px-5 py-3 rounded-xl border border-[#39261a] text-xs text-[#dfcca9] hover:bg-[#251911]"
                   >
                     Cancelar
@@ -1091,130 +1044,106 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
         )}
 
         {/* =================================================================== */}
-        {/* TAB 3: SETTINGS, BACKUP & SECURITY                                 */}
+        {/* TAB 3: CUENTA Y COPIA DE SEGURIDAD                                   */}
         {/* =================================================================== */}
         {activeTab === 'settings' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Box 1: Change PIN */}
+
+            {/* Cambiar contraseña */}
             <div className="bg-[#150e09] border border-[#2d1b11] p-6 sm:p-8 rounded-3xl shadow-sm">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-[#b97f33]/20 border border-[#d69c4f]/40 flex items-center justify-center text-[#e8b66f]">
                   <KeyRound className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-[#faf3e8]">
-                    Seguridad y PIN de Acceso
-                  </h3>
-                  <p className="text-xs text-[#dfcca9]">
-                    Cambia la clave para ingresar a esta página de administración.
-                  </p>
+                  <h3 className="font-serif text-lg font-bold text-[#faf3e8]">Cambiar contraseña</h3>
+                  <p className="text-xs text-[#dfcca9]">La que usas para entrar a este panel.</p>
                 </div>
               </div>
 
-              <form onSubmit={handleUpdatePin} className="space-y-4">
+              <form onSubmit={handleUpdatePassword} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#faf3e8] mb-1">
-                    Nuevo PIN (mínimo 4 caracteres)
+                  <label htmlFor="admin-new-password" className="block text-xs font-semibold text-[#faf3e8] mb-1">
+                    Nueva contraseña (mínimo 10 caracteres)
                   </label>
                   <input
+                    id="admin-new-password"
                     type="password"
+                    autoComplete="new-password"
                     required
-                    value={newPin}
-                    onChange={(e) => setNewPin(e.target.value)}
-                    placeholder="Nuevo PIN"
+                    minLength={10}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs text-[#faf3e8] focus:outline-none focus:border-[#d69c4f]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#faf3e8] mb-1">
-                    Confirmar Nuevo PIN
+                  <label htmlFor="admin-confirm-password" className="block text-xs font-semibold text-[#faf3e8] mb-1">
+                    Repite la nueva contraseña
                   </label>
                   <input
+                    id="admin-confirm-password"
                     type="password"
+                    autoComplete="new-password"
                     required
-                    value={confirmPin}
-                    onChange={(e) => setConfirmPin(e.target.value)}
-                    placeholder="Repite el nuevo PIN"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs text-[#faf3e8] focus:outline-none focus:border-[#d69c4f]"
                   />
+                  {confirmPassword && newPassword !== confirmPassword && (
+                    <p className="text-[11px] text-red-300 mt-1">Las contraseñas no coinciden.</p>
+                  )}
                 </div>
 
-                {pinSuccessMsg && (
+                {passwordSuccess && (
                   <p className="text-xs text-emerald-400 flex items-center gap-1.5">
-                    <Check className="w-4 h-4" /> ¡PIN actualizado exitosamente!
+                    <Check className="w-4 h-4" /> Contraseña actualizada.
                   </p>
                 )}
 
                 <button
                   type="submit"
-                  disabled={newPin.length < 4 || newPin !== confirmPin}
-                  className="w-full py-2.5 rounded-xl bg-[#d69c4f] hover:bg-[#e4ac61] text-[#150e09] font-bold text-xs disabled:opacity-50 transition-all cursor-pointer"
+                  disabled={!passwordValid || busy}
+                  className="w-full py-2.5 rounded-xl bg-[#d69c4f] hover:bg-[#e4ac61] text-[#150e09] font-bold text-xs disabled:opacity-50 transition-all cursor-pointer disabled:cursor-not-allowed"
                 >
-                  Actualizar PIN
+                  Guardar nueva contraseña
                 </button>
               </form>
-
-              <p className="text-[11px] text-[#88705b] mt-4">
-                * El PIN actual se conserva en tu navegador y protege este portal de accesos no autorizados.
-              </p>
             </div>
 
-            {/* Box 2: Backup & Restore */}
-            <div className="bg-[#150e09] border border-[#2d1b11] p-6 sm:p-8 rounded-3xl shadow-sm flex flex-col justify-between">
+            {/* Copia de seguridad */}
+            <div className="bg-[#150e09] border border-[#2d1b11] p-6 sm:p-8 rounded-3xl shadow-sm flex flex-col justify-between gap-6">
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                  <div className="w-10 h-10 rounded-xl bg-[#b97f33]/20 border border-[#d69c4f]/40 flex items-center justify-center text-[#e8b66f]">
                     <Download className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-serif text-lg font-bold text-[#faf3e8]">
-                      Copia de Seguridad y Restauración
-                    </h3>
+                    <h3 className="font-serif text-lg font-bold text-[#faf3e8]">Copia de seguridad</h3>
                     <p className="text-xs text-[#dfcca9]">
-                      Exporta o restaura tus tortas y precios en formato JSON.
+                      El catálogo vive en la base de datos. Descarga una copia con tus tortas y precios cuando quieras.
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  <button
-                    onClick={handleExportJSON}
-                    className="w-full py-3 px-4 rounded-xl bg-[#1f130b] hover:bg-[#2c1b10] border border-[#d69c4f]/40 text-xs text-[#faf3e8] font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <Download className="w-4 h-4 text-[#e8b66f]" />
-                    <span>Descargar Copia de Seguridad (.json)</span>
-                  </button>
-
-                  <label className="w-full py-3 px-4 rounded-xl bg-[#1f130b] hover:bg-[#2c1b10] border border-[#39261a] hover:border-[#d69c4f]/40 text-xs text-[#dfcca9] font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer">
-                    <Upload className="w-4 h-4 text-[#e8b66f]" />
-                    <span>Importar Catálogo (.json)</span>
-                    <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-                  </label>
-                </div>
-              </div>
-
-              {/* Reset to Factory Defaults */}
-              <div className="mt-8 pt-6 border-t border-[#251911]">
-                <h4 className="text-xs font-bold text-red-300 mb-1">Zona de Restauración</h4>
-                <p className="text-[11px] text-[#dfcca9] mb-3">
-                  Si deseas volver al catálogo original de JIRÉH con las recetas y fotos iniciales:
-                </p>
                 <button
-                  onClick={() => {
-                    if (window.confirm('¿Seguro que deseas restaurar el catálogo a los productos originales de JIRÉH?')) {
-                      onResetProducts();
-                      showToast('Catálogo restaurado a los valores originales.');
-                    }
-                  }}
-                  className="py-2 px-4 rounded-xl bg-[#2a1313] hover:bg-[#3d1818] border border-red-500/30 text-xs text-red-200 transition-colors cursor-pointer flex items-center gap-2"
+                  onClick={handleExportJSON}
+                  disabled={products.length === 0}
+                  className="w-full py-3 px-4 rounded-xl bg-[#1f130b] hover:bg-[#2c1b10] border border-[#d69c4f]/40 text-xs text-[#faf3e8] font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Restaurar Catálogo Predeterminado</span>
+                  <Download className="w-4 h-4 text-[#e8b66f]" />
+                  <span>Descargar copia (.json)</span>
                 </button>
               </div>
 
+              <button
+                onClick={() => void reload()}
+                className="self-start py-2 px-4 rounded-xl border border-[#39261a] text-xs text-[#dfcca9] hover:bg-[#251911] flex items-center gap-2 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-[#e8b66f]" />
+                <span>Volver a cargar el catálogo</span>
+              </button>
             </div>
 
           </div>
@@ -1233,7 +1162,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
               ¿Eliminar {productToDelete.name}?
             </h4>
             <p className="text-xs text-[#dfcca9] mb-6">
-              Esta torta se retirará del catálogo de la web. Siempre podrás restaurarla desde Ajustes si lo necesitas.
+              Se retirará del catálogo de la web. Esta acción no se puede deshacer.
             </p>
             <div className="flex items-center justify-center gap-3">
               <button
@@ -1244,9 +1173,10 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({
               </button>
               <button
                 onClick={handleDeleteProduct}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md"
+                disabled={busy}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md disabled:opacity-60"
               >
-                Sí, Eliminar
+                {busy ? 'Eliminando…' : 'Sí, Eliminar'}
               </button>
             </div>
           </div>

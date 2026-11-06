@@ -1,9 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { StorySection } from './components/StorySection';
@@ -15,12 +10,14 @@ import { CustomCakeModal } from './components/CustomCakeModal';
 import { GalleryModal } from './components/GalleryModal';
 import { LibroReclamacionesModal } from './components/LibroReclamacionesModal';
 import { LegalModal, LegalModalType } from './components/LegalModal';
-import { AdminProductsPage } from './pages/AdminProductsPage';
 import { CakeItem } from './types/bakery';
-import { loadStoredProducts, saveStoredProducts, resetStoredProducts } from './utils/productStore';
+import { useCatalog } from './lib/catalog';
+
+// El panel (y la librería de Supabase Auth) solo se descarga al entrar a #admin.
+const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
 
 export default function App() {
-  const [products, setProducts] = useState<CakeItem[]>(() => loadStoredProducts());
+  const { products } = useCatalog();
   const [currentView, setCurrentView] = useState<'store' | 'admin'>(() => {
     if (typeof window !== 'undefined') {
       return window.location.hash === '#admin' || window.location.hash === '#adm' ? 'admin' : 'store';
@@ -59,16 +56,6 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSaveProducts = (updated: CakeItem[]) => {
-    setProducts(updated);
-    saveStoredProducts(updated);
-  };
-
-  const handleResetProducts = () => {
-    const defaultCatalog = resetStoredProducts();
-    setProducts(defaultCatalog);
-  };
-
   const handleExploreCatalog = () => {
     const el = document.getElementById('tortas');
     if (el) {
@@ -83,12 +70,9 @@ export default function App() {
   // Dedicated Full-Page Admin View
   if (currentView === 'admin') {
     return (
-      <AdminProductsPage
-        onBackToStore={navigateToStore}
-        products={products}
-        onSaveProducts={handleSaveProducts}
-        onResetProducts={handleResetProducts}
-      />
+      <Suspense fallback={<div className="min-h-screen bg-[#0e0805]" />}>
+        <AdminApp onBackToStore={navigateToStore} />
+      </Suspense>
     );
   }
 
