@@ -8,12 +8,12 @@ React 19 + Vite + Tailwind 4. El catálogo y el panel de administración usan **
 ```bash
 npm install
 cp .env.example .env.local   # completar VITE_SUPABASE_URL y VITE_SUPABASE_KEY
-npm run dev                  # http://localhost:3001
+npm run dev                  # http://localhost:5173
 ```
 
 | Comando | Qué hace |
 |---|---|
-| `npm run dev` | Servidor local en el puerto 3001 |
+| `npm run dev` | Servidor local en el puerto 5173 |
 | `npm run build` | Build de producción en `dist/` |
 | `npm run lint` | Revisión de tipos (TypeScript) |
 | `npm test` | Tests (`src/**/*.test.ts`) |
