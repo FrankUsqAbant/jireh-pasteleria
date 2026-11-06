@@ -1,0 +1,6 @@
+{
+  "name": "JIRÉH Panadería y Pastelería",
+  "description": "Sitio web oficial de JIRÉH Panadería y Pastelería en Cajamarca. Catálogo de tortas artesanales, personalización a medida, vista 3D interactiva, pedidos por WhatsApp y ubicación.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
