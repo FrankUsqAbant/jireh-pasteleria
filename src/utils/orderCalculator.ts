@@ -78,3 +78,6 @@ export function generateWhatsAppCakeQuote(cakeName: string, portions?: string): 
 
   return `https://wa.me/51943347113?text=${encodeURIComponent(message)}`;
 }
+
+/** Chat de WhatsApp de la tienda con un saludo listo. */
+export const STORE_WHATSAPP_URL = `https://wa.me/51943347113?text=${encodeURIComponent('¡Hola JIRÉH! Quisiera hacer un pedido.')}`;

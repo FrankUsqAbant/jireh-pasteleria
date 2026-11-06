@@ -1,46 +1,92 @@
 @import "tailwindcss";
 
+/* ----------------------------------- fuentes ----------------------------------- */
+@font-face {
+  font-family: 'Young Serif';
+  src: url('/fonts/young-serif-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Host Grotesk';
+  src: url('/fonts/host-grotesk-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Host Grotesk';
+  src: url('/fonts/host-grotesk-500-normal.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Host Grotesk';
+  src: url('/fonts/host-grotesk-600-normal.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+
+/* Tailwind: el panel de administración y los modales usan estas familias */
 @theme {
-  --font-serif: 'Playfair Display', Georgia, serif;
-  --font-display: 'Cinzel', serif;
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --color-cocoa-950: #0d0805;
-  --color-cocoa-900: #150e09;
-  --color-cocoa-850: #1b120c;
-  --color-cocoa-800: #251911;
-  --color-cocoa-700: #39261a;
-  --color-cocoa-600: #4e3424;
-  --color-gold-300: #f5d49f;
-  --color-gold-400: #e8b66f;
-  --color-gold-500: #d69c4f;
-  --color-gold-600: #b97f33;
-  --color-cream-50: #fffdfa;
-  --color-cream-100: #faf3e8;
-  --color-cream-200: #f1e4d1;
-  --color-cream-300: #dfcca9;
+  --font-serif: 'Young Serif', Georgia, serif;
+  --font-display: 'Young Serif', Georgia, serif;
+  --font-sans: 'Host Grotesk', system-ui, sans-serif;
+}
+
+/* ----------------------------------- tokens ----------------------------------- */
+:root {
+  /* capas (DESIGN.md) */
+  --ganache: #2a1710;
+  --bizcocho: #f3e4c7;
+  --manjar: #d39a5b;
+  --muted: #6e4b36;
+  --muted-on-dark: #d9c3a5;
+  --line: rgba(42, 23, 16, 0.16);
+  --line-on-dark: rgba(243, 228, 199, 0.18);
+  --fresa: #b3202e;
+  --dorado: #c9a14e;
+
+  --f-display: 'Young Serif', Georgia, serif;
+  --f-text: 'Host Grotesk', system-ui, sans-serif;
+
+  --t-xl: clamp(2.6rem, 1.5rem + 4.4vw, 5.4rem);
+  --t-l: clamp(2rem, 1.4rem + 2.4vw, 3.4rem);
+  --t-m: clamp(1.3rem, 1.15rem + 0.6vw, 1.7rem);
+  --t-body: clamp(1.02rem, 0.98rem + 0.2vw, 1.125rem);
+  --t-s: 0.9rem;
+  --t-xs: 0.8rem;
+
+  --gutter: clamp(20px, 3.4vw, 48px);
+  --radius: 18px;
+  --settle: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html {
-  scroll-behavior: smooth;
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  background-color: #120c08;
-  color: #faf3e8;
+  font-family: var(--f-text);
+  background: var(--ganache);
+  color: var(--ganache);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 body {
   margin: 0;
-  padding: 0;
-  background-color: #120c08;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--manjar);
+  color: var(--ganache);
+}
+
+:focus-visible {
+  outline: 2px solid var(--fresa);
+  outline-offset: 3px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
   *,
   *::before,
   *::after {
@@ -50,38 +96,144 @@ body {
   }
 }
 
-/* Custom scrollbar matching dark warm aesthetic */
-::-webkit-scrollbar {
-  width: 8px;
+/* --------------------------------- utilidades --------------------------------- */
+.skip-link {
+  position: fixed;
+  left: var(--gutter);
+  top: 12px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--bizcocho);
+  color: var(--ganache);
+  font-weight: 600;
+  transform: translateY(-160%);
+  transition: transform 0.3s var(--settle);
 }
-::-webkit-scrollbar-track {
-  background: #150e09;
-}
-::-webkit-scrollbar-thumb {
-  background: #39261a;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #d69c4f;
-}
-
-.font-serif {
-  font-family: 'Playfair Display', Georgia, serif;
-}
-
-.font-display {
-  font-family: 'Cinzel', Georgia, serif;
+.skip-link:focus-visible {
+  transform: none;
 }
 
-/* Subtle gold ambient glow */
-.gold-glow {
-  box-shadow: 0 0 35px -5px rgba(214, 156, 79, 0.25);
+.wrap {
+  width: 100%;
+  max-width: 1360px;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
 }
 
-.gold-glow-lg {
-  box-shadow: 0 0 60px -10px rgba(214, 156, 79, 0.35);
+.display {
+  font-family: var(--f-display);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+  text-wrap: balance;
 }
 
-.gold-border {
-  border-color: rgba(214, 156, 79, 0.35);
+.lede {
+  font-size: var(--t-body);
+  line-height: 1.58;
+  max-width: 34rem;
+}
+
+.price {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Botón: la crema rellena el botón desde abajo y la flecha avanza */
+.btn {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  min-height: 48px;
+  padding: 0 1.4em;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid currentColor;
+  transition: color 0.45s var(--settle), border-color 0.45s var(--settle), transform 0.2s var(--settle);
+}
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--btn-fill, var(--manjar));
+  clip-path: inset(100% 0 0 0 round 999px);
+  transition: clip-path 0.55s var(--settle);
+}
+.btn__arrow {
+  transition: transform 0.45s var(--settle);
+}
+@media (hover: hover) {
+  .btn:hover::before {
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+  .btn:hover {
+    color: var(--btn-fill-ink, var(--ganache));
+    border-color: var(--btn-fill, var(--manjar));
+  }
+  .btn:hover .btn__arrow {
+    transform: translateX(4px);
+  }
+}
+.btn:focus-visible::before {
+  clip-path: inset(0 0 0 0 round 999px);
+}
+.btn:focus-visible {
+  color: var(--btn-fill-ink, var(--ganache));
+  border-color: var(--btn-fill, var(--manjar));
+}
+.btn:active {
+  transform: scale(0.97);
+}
+
+/* Variantes */
+.btn--solid-light {
+  background: var(--bizcocho);
+  color: var(--ganache);
+  border-color: var(--bizcocho);
+}
+.btn--solid-dark {
+  background: var(--ganache);
+  color: var(--bizcocho);
+  border-color: var(--ganache);
+}
+.btn--ghost-light {
+  color: var(--bizcocho);
+}
+.btn--ghost-dark {
+  color: var(--ganache);
+}
+
+/* Enlace de texto: subrayado en reposo que se engrosa */
+.text-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  transition: text-decoration-thickness 0.3s var(--settle), text-underline-offset 0.3s var(--settle);
+}
+@media (hover: hover) {
+  .text-link:hover {
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.3em;
+  }
+}
+.text-link:focus-visible {
+  text-decoration-thickness: 2px;
+}
+
+/* Costura entre capas: una franja de relleno con el borde del corte */
+.seam {
+  display: block;
+  width: 100%;
+  height: clamp(18px, 2.4vw, 30px);
+  margin-top: -1px;
+  margin-bottom: -1px;
 }
