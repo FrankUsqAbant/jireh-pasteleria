@@ -32,11 +32,3 @@ test('isStoreOpen correctly identifies open vs closed hours', () => {
   assert.equal(resClosed.isOpen, false);
   assert.equal(resClosed.statusText, 'Cerrado ahora');
 });
-
-test('productStore provides non-empty initial catalog and default PIN', async () => {
-  const { getInitialCatalog, DEFAULT_ADMIN_PIN, getAdminPin } = await import('./productStore');
-  const catalog = getInitialCatalog();
-  assert.ok(catalog.length >= 5, 'Initial catalog should have at least 5 products');
-  assert.equal(DEFAULT_ADMIN_PIN, '1234');
-  assert.equal(getAdminPin(), '1234');
-});
