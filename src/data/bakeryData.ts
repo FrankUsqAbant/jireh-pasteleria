@@ -1,51 +1,13 @@
 import { CakeItem, ReviewItem } from '../types/bakery';
 
-export const LOGO_URL = '/assets/aistudio/Captura_de_pantalla_2026-10-31_005917_4d19c4d4.jpg';
-export const STOREFRONT_URL = '/assets/aistudio/Captura_de_pantalla_2026-10-31_005951_86005b29.jpg';
-export const STORY_IMAGE_URL = '/assets/cropped/story_composition.jpg';
-export const HERO_IMAGE_URL = '/assets/cropped/hero_cake_pedestal.jpg';
-
-export const HERO_FEATURED_CAKES = [
-  {
-    id: 'hero-1',
-    number: '01',
-    name: 'Torta Chocolatísima Drip 🍓',
-    tagline: 'Delicioso bizcocho húmedo de cacao con ganache oscuro y fresas frescas de temporada.',
-    portions: '20-25 porciones',
-    image: '/assets/seamless/torta_chocolatisima.png',
-  },
-  {
-    id: 'hero-2',
-    number: '02',
-    name: 'Torta Rosas de Ensueño 🌸',
-    tagline: 'Nuestra creación insigne con rosetones de crema suiza y topper dorado.',
-    portions: '25-30 porciones',
-    image: '/assets/seamless/torta_rosas.png',
-  },
-  {
-    id: 'hero-3',
-    number: '03',
-    name: 'Torta Selva Negra Tradicional 🍒',
-    tagline: 'Cerezas maceradas, abundante virutas de chocolate cajamarquino y chantilly artesanal.',
-    portions: '20-24 porciones',
-    image: '/assets/seamless/torta_selva_negra.png',
-  },
-  {
-    id: 'hero-4',
-    number: '04',
-    name: 'Torta Temática Infantil 🎈',
-    tagline: 'Modelados en azúcar, colores vibrantes y sabores suaves que encantan a los más pequeños.',
-    portions: '30-35 porciones',
-    image: '/assets/seamless/torta_infantil.png',
-  }
-];
-
+export const LOGO_URL = '/assets/logo-jireh.webp';
+export const STOREFRONT_URL = '/assets/local-jireh.webp';
 export const CAKE_CATEGORIES = [
-  { id: 'cumpleanos', label: 'Tortas de Cumpleaños', icon: '🎂' },
-  { id: 'infantiles', label: 'Tortas Infantiles', icon: '🎈' },
-  { id: 'bodas', label: 'Bodas & Eventos', icon: '💍' },
-  { id: 'tematicas', label: 'Temáticas & Especiales', icon: '🎨' },
-  { id: 'panaderia', label: 'Panadería & Dulces', icon: '🥐' },
+  { id: 'cumpleanos', label: 'Cumpleaños' },
+  { id: 'infantiles', label: 'Infantiles' },
+  { id: 'bodas', label: 'Bodas y eventos' },
+  { id: 'tematicas', label: 'Temáticas' },
+  { id: 'panaderia', label: 'Panadería y dulces' },
 ] as const;
 
 export const FEATURED_SPECIALTIES: CakeItem[] = [
@@ -56,7 +18,7 @@ export const FEATURED_SPECIALTIES: CakeItem[] = [
     description: 'Divertida torta con motivos animados, decorada artesanalmente con cobertura cremosa y detalles en fondant.',
     portions: '20-25 porciones',
     basePrice: 85,
-    image: '/assets/cropped/torta_infantil.jpg',
+    image: '/assets/cropped/torta_infantil.webp',
     flavors: ['Vainilla Chispas', 'Chocolate Suave', 'Marmoleado'],
     fillings: ['Fudge casero', 'Manjar blanco cajamarquino'],
   },
@@ -67,7 +29,7 @@ export const FEATURED_SPECIALTIES: CakeItem[] = [
     description: 'Nuestra creación más aclamada en Cajamarca: dos niveles de rosetones en degradé rosa y marfil con topper dorado.',
     portions: '25-30 porciones',
     basePrice: 110,
-    image: '/assets/cropped/torta_rosas.jpg',
+    image: '/assets/cropped/torta_rosas.webp',
     badge: 'La Más Pedida',
     isPopular: true,
     isCustomizable: true,
@@ -81,7 +43,7 @@ export const FEATURED_SPECIALTIES: CakeItem[] = [
     description: 'Exquisito goteo de chocolate belga, coronado con fresas seleccionadas, trufas y bombones.',
     portions: '20-25 porciones',
     basePrice: 95,
-    image: '/assets/cropped/torta_chocodrip.jpg',
+    image: '/assets/cropped/torta_chocodrip.webp',
     flavors: ['Triple Chocolate', 'Moka', 'Vainilla'],
     fillings: ['Fudge artesanal', 'Chantilly con duraznos'],
   },
@@ -95,7 +57,7 @@ export const GALLERY_CAKES: CakeItem[] = [
     description: 'Elegante acabado en merengue italiano con rosas naturales y follaje fino.',
     portions: '20-24 porciones',
     basePrice: 80,
-    image: '/assets/cropped/torta_rosas.jpg',
+    image: '/assets/reales/rosas-crema.jpg',
   },
   {
     id: 'gal-2',
@@ -104,7 +66,7 @@ export const GALLERY_CAKES: CakeItem[] = [
     description: 'Diseño creativo con modelado artístico en glasé real y texturas temáticas.',
     portions: '25 porciones',
     basePrice: 90,
-    image: '/assets/cropped/torta_infantil.jpg',
+    image: '/assets/reales/infantil-paw.jpg',
   },
   {
     id: 'gal-3',
@@ -113,7 +75,7 @@ export const GALLERY_CAKES: CakeItem[] = [
     description: 'Estructura nupcial con cintas doradas, rosas salmón y relleno gourmet.',
     portions: '50-60 porciones',
     basePrice: 220,
-    image: '/assets/aistudio/Captura_de_pantalla_2026-10-31_005810_e5bf024c.jpg',
+    image: '/assets/reales/boda-tres-pisos.jpg',
   },
   {
     id: 'gal-4',
@@ -122,7 +84,7 @@ export const GALLERY_CAKES: CakeItem[] = [
     description: 'Baño de ganache belga espeso, fresas frescas y macarons artesanales.',
     portions: '20-25 porciones',
     basePrice: 95,
-    image: '/assets/cropped/torta_chocodrip.jpg',
+    image: '/assets/seamless/torta_chocolatisima.webp',
   },
   {
     id: 'gal-5',
@@ -131,7 +93,7 @@ export const GALLERY_CAKES: CakeItem[] = [
     description: 'Bizcochuelo embebido en almíbar, chantilly fresco, duraznos y cerezas.',
     portions: '20-24 porciones',
     basePrice: 75,
-    image: '/assets/seamless/torta_selva_negra.png',
+    image: '/assets/seamless/torta_selva_negra.webp',
   },
   {
     id: 'gal-6',
@@ -140,7 +102,7 @@ export const GALLERY_CAKES: CakeItem[] = [
     description: 'Bañada en crema suave con detalles perlados comestibles y acabado satinado.',
     portions: '20-25 porciones',
     basePrice: 85,
-    image: '/assets/aistudio/Captura_de_pantalla_2026-10-31_005840_3d36985c.jpg',
+    image: '/assets/reales/drip-celeste.jpg',
   },
   {
     id: 'gal-7',
@@ -149,7 +111,7 @@ export const GALLERY_CAKES: CakeItem[] = [
     description: 'Capas finas de hojaldre crujiente rellenas del tradicional manjar cajamarquino.',
     portions: '15-18 porciones',
     basePrice: 55,
-    image: '/assets/aistudio/Captura_de_pantalla_2026-10-31_005756_448f9d70.jpg',
+    image: '/assets/reales/milhojas.jpg',
   },
   {
     id: 'gal-8',
@@ -158,7 +120,7 @@ export const GALLERY_CAKES: CakeItem[] = [
     description: 'Doble altura decorada con rosetones artesanales y topper conmemorativo.',
     portions: '25-30 porciones',
     basePrice: 110,
-    image: '/assets/seamless/torta_rosas.png',
+    image: '/assets/seamless/torta_rosas.webp',
   },
 ];
 
@@ -196,7 +158,7 @@ export const FAQS = [
   },
   {
     q: '¿Realizan delivery en Cajamarca?',
-    a: 'Sí, realizamos envíos a todo Cajamarca ciudad (cercado, Santa Elena, San Sebastián, Chontapaccha) y zonas aledañas como Baños del Inca, coordinando la hora exacta para que llegue perfecta.'
+    a: 'Sí. Llevamos tu torta a Cajamarca ciudad (Cercado, Santa Elena, San Sebastián, Chontapaccha) y a Baños del Inca, y coordinamos contigo la hora exacta.'
   },
   {
     q: '¿Qué medios de pago aceptan?',
@@ -204,6 +166,6 @@ export const FAQS = [
   },
   {
     q: '¿Puedo enviar mi propio diseño de referencia de internet?',
-    a: '¡Por supuesto! En la sección "Pedir a medida" puedes indicarnos los detalles y enviarnos la foto por WhatsApp. Nuestros maestros pasteleros reproducirán el diseño cuidando el sabor tradicional.'
+    a: 'Claro. En Arma tu torta eliges las capas y escribes la temática; la foto de referencia nos la mandas por WhatsApp y la reproducimos cuidando el sabor.'
   }
 ];

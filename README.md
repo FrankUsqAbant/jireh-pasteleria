@@ -14,7 +14,7 @@ npm run dev                  # http://localhost:5173
 | Comando | Qué hace |
 |---|---|
 | `npm run dev` | Servidor local en el puerto 5173 |
-| `npm run build` | Build de producción en `dist/` |
+| `npm run build` | Build de producción en `dist/`, con la tienda pre-renderizada en el HTML |
 | `npm run lint` | Revisión de tipos (TypeScript) |
 | `npm test` | Tests (`src/**/*.test.ts`) |
 
@@ -32,6 +32,9 @@ src/
     AdminProductsPage.tsx catálogo, formulario de torta, ajustes
     adminApi.ts           operaciones contra Supabase
 supabase/                 migraciones SQL y catálogo inicial (ver supabase/README.md)
+scripts/                  generar-seed.ts (catálogo inicial) y prerender.mjs (HTML de la tienda)
+fotos-fuente/             mosaicos originales del Facebook del cliente (no se publican)
+DESIGN.md                 concepto "Las capas", paleta, tipografía, movimiento y decisiones
 ```
 
 ## Panel de administración

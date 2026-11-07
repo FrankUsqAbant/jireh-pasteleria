@@ -12,3 +12,5 @@ coverage/
 .aistudio/
 .claude/settings.local.json
 .admin-temporal.txt
+.shots/
+dist-ssr/

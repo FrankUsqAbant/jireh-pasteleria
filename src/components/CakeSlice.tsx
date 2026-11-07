@@ -323,7 +323,7 @@ export const CakeSlice: React.FC<CakeSliceProps> = ({ choice, intro = false, cla
   }, [frosting.drip, frosting.id]);
 
   return (
-    <svg ref={root} viewBox="0 0 400 430" className={className} role="img" aria-label={label}>
+    <svg ref={root} viewBox="0 0 400 430" className={`${className ?? ''}${intro ? ' is-intro' : ''}`} role="img" aria-label={label}>
       <defs>
         <filter id={texture} x="0" y="0" width="100%" height="100%">
           {/* Miga: puntos donde el ruido es alto, con el color de la miga (SourceGraphic) */}
