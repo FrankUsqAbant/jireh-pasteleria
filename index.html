@@ -13,6 +13,19 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="preload" href="/assets/portada/torta-capas.webp" as="image" type="image/webp" fetchpriority="high" />
+    <script>
+      // La torta de la portada empieza a armarse cuando llegó su foto (en redes lentas no caen piezas vacías);
+      // la foto de la tapa se pide después, para no quitarle velocidad (cae recién a los 1.3 s).
+      // Si algo falla, arranca igual a los 4 s.
+      (function () {
+        var d = document.documentElement;
+        var listo = function () { d.classList.add("torta-lista"); };
+        var foto = new Image();
+        foto.onload = foto.onerror = function () { listo(); new Image().src = "/assets/portada/torta-tapa.webp"; };
+        foto.src = "/assets/portada/torta-capas.webp";
+        setTimeout(listo, 4000);
+      })();
+    </script>
     <link rel="preload" href="/fonts/young-serif-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/host-grotesk-variable.woff2" as="font" type="font/woff2" crossorigin />
     <script type="application/ld+json">
