@@ -15,7 +15,9 @@ export const CakeBuilder: React.FC = () => {
 
   // La fecha mínima se calcula en el navegador (el HTML pre-renderizado no sabe qué día es hoy)
   const [today, setToday] = useState<string | undefined>();
-  useEffect(() => setToday(new Date().toISOString().slice(0, 10)), []);
+  useEffect(() => {
+    setToday(new Date().toISOString().slice(0, 10));
+  }, []);
 
   const specialty = FROSTINGS.find((f) => f.label === frosting)?.specialty ?? false;
   const price = estimateCakePrice(portions, specialty);

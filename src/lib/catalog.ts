@@ -55,6 +55,7 @@ export function rowToCake(row: TortaRow): CakeItem {
     isCustomizable: row.personalizable,
     flavors: row.sabores.length ? row.sabores : undefined,
     fillings: row.rellenos.length ? row.rellenos : undefined,
+    isActive: row.activo,
   };
 }
 
@@ -73,6 +74,7 @@ export function cakeToRow(cake: Omit<CakeItem, 'id'>) {
     personalizable: cake.isCustomizable !== false,
     sabores: cake.flavors ?? [],
     rellenos: cake.fillings ?? [],
+    activo: cake.isActive !== false,
   };
 }
 
