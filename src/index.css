@@ -78,7 +78,8 @@ body {
 /* En las capas oscuras el foco va en manjar (contraste mayor a 3:1 sobre ganache) */
 .site-header :focus-visible,
 .mobile-menu :focus-visible,
-.hero :focus-visible,
+.hero-capas :focus-visible,
+.medida :focus-visible,
 .site-footer :focus-visible {
   outline-color: var(--manjar);
 }
@@ -226,11 +227,15 @@ body {
   text-decoration-thickness: 2px;
 }
 
-/* Costura entre capas: una franja de relleno con el borde del corte */
-.seam {
-  display: block;
-  width: 100%;
-  height: clamp(18px, 2.4vw, 30px);
-  margin-top: -1px;
-  margin-bottom: -1px;
+/* Texto solo para lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

@@ -105,3 +105,15 @@ PIE (capa: base dorada sobre ganache)
 - URL definitiva → `canonical`, `og:image` (scripts/og.mjs de la skill), `sitemap.xml`.
 - Reemplazar: reseñas de ejemplo, fotos generadas por IA de AI Studio (`cropped/`, `seamless/`), "desde 2007", RUC,
   medios de pago y zonas de entrega si no son exactos.
+
+## Rediseño v2 (2026-11-06): fotos reales y menos información
+El cliente rechazó la v1: "muy básica y llena de información" y la tajada dibujada en la portada
+("una torta de dibujo no tiene nada que hacer allí"). Se mantiene la idea de capas, pero con fotografía.
+- **Portada:** foto real (Unsplash, provisional) de una naked cake recortada del fondo y partida en 5 piezas
+  con clipPath siguiendo sus curvas (base, 3 capas, tapa). La base aparece y las capas caen y se asientan
+  (CSS puro, sin JS, 3.2 s); al final se muestra la foto entera. Movimiento reducido: foto entera.
+- **Secciones:** Tortas (fotos grandes 4:5, nombre y precio; se ven 6 y un botón muestra el resto),
+  A medida (foto de una tajada + formulario corto que arma el WhatsApp), Visítanos (tipográfico, sin mapa
+  ni foto borrosa del local) y el pie. Salieron reseñas, pasos, filtros, el armador dibujado y GSAP.
+- **Fotos:** todas de Unsplash (licencia gratuita), marcadas como provisionales en el pie. Reemplazar por las
+  del cliente en alta resolución.

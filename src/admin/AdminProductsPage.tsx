@@ -577,7 +577,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ onBackToSt
                           alt={cake.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/assets/cropped/torta_chocodrip.webp';
+                            (e.target as HTMLImageElement).src = '/assets/tortas/chocolate-drip.webp';
                           }}
                         />
 
@@ -997,7 +997,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ onBackToSt
                       alt={formName || 'Vista Previa'}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/assets/cropped/torta_chocodrip.webp';
+                        (e.target as HTMLImageElement).src = '/assets/tortas/chocolate-drip.webp';
                       }}
                     />
 

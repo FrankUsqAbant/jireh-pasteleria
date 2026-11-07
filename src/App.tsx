@@ -1,10 +1,8 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { SiteHeader } from './components/SiteHeader';
-import { Hero } from './components/Hero';
+import { HeroCapas } from './components/HeroCapas';
 import { CakeBuilder } from './components/CakeBuilder';
-import { Seam } from './components/Seam';
 import { Vitrina } from './components/Vitrina';
-import { HowToOrder } from './components/HowToOrder';
 import { Visit } from './components/Visit';
 import { SiteFooter } from './components/SiteFooter';
 import type { LegalModalType } from './components/LegalModal';
@@ -56,14 +54,9 @@ export default function App() {
       <SiteHeader />
 
       <main id="contenido">
-        <Hero />
-        <Seam top="var(--ganache)" band="var(--manjar)" bottom="var(--bizcocho)" seed={3} />
+        <HeroCapas />
         <Vitrina products={products} />
-        <Seam top="var(--bizcocho)" band="var(--ganache)" bottom="var(--manjar)" seed={7} />
         <CakeBuilder />
-        <Seam top="var(--manjar)" band="#fbf3e6" bottom="var(--bizcocho)" seed={11} />
-        <HowToOrder />
-        <Seam top="var(--bizcocho)" band="var(--manjar)" bottom="var(--bizcocho-claro)" seed={17} />
         <Visit />
       </main>
 

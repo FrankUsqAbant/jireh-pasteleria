@@ -4,9 +4,8 @@ import { STORE_WHATSAPP_URL } from '../utils/orderCalculator';
 import { goTo } from '../lib/motion';
 
 export const NAV = [
-  { id: 'vitrina', label: 'Vitrina' },
-  { id: 'arma', label: 'Arma tu torta' },
-  { id: 'pedir', label: 'Cómo pedir' },
+  { id: 'vitrina', label: 'Tortas' },
+  { id: 'arma', label: 'A medida' },
   { id: 'visitanos', label: 'Visítanos' },
 ] as const;
 

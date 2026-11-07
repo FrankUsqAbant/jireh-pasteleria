@@ -3,15 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>JIRÉH Panadería y Pastelería · Tortas por capas en Cajamarca</title>
-    <meta name="description" content="Tortas a tu gusto en Cajamarca: elige bizcocho, rellenos y cobertura, y pide por WhatsApp. Av. San Martín de Porres 787, de 2:00 p.m. a 10:00 p.m." />
+    <title>JIRÉH Panadería y Pastelería · Tortas en Cajamarca</title>
+    <meta name="description" content="Tortas hechas a mano en Cajamarca, de catálogo o a tu gusto, con pedido por WhatsApp. Av. San Martín de Porres 787, de 2:00 p.m. a 10:00 p.m." />
     <meta name="theme-color" content="#2a1710" />
     <meta property="og:title" content="JIRÉH Panadería y Pastelería" />
-    <meta property="og:description" content="Tortas por capas, armadas a tu gusto en Cajamarca." />
+    <meta property="og:description" content="Tortas que se vuelven recuerdo, hechas a mano en Cajamarca." />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="es_PE" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="preload" href="/assets/portada/torta-capas.webp" as="image" type="image/webp" fetchpriority="high" />
     <link rel="preload" href="/fonts/young-serif-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/host-grotesk-variable.woff2" as="font" type="font/woff2" crossorigin />
     <script type="application/ld+json">
@@ -32,10 +33,6 @@
     </script>
   </head>
   <body>
-    <script>
-      // Con JS y sin movimiento reducido, la tajada de la portada espera para armarse capa por capa
-      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js-intro");
-    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
