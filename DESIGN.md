@@ -117,3 +117,10 @@ El cliente rechazó la v1: "muy básica y llena de información" y la tajada dib
   ni foto borrosa del local) y el pie. Salieron reseñas, pasos, filtros, el armador dibujado y GSAP.
 - **Fotos:** todas de Unsplash (licencia gratuita), marcadas como provisionales en el pie. Reemplazar por las
   del cliente en alta resolución.
+
+## Portada v3 (2026-11-06): que se vea natural
+- La base llega con la primera capa (sin hueco); cada capa cae como disco con tapa de crema (color de la foto,
+  textura leve) y proyecta una sombra de contacto que crece antes de apoyarse.
+- La tapa cae sin las fresas (mask con hueco difuminado relleno de crema); las 6 fresas, delineadas a mano
+  sobre la foto, caen después una por una, inclinadas, se enderezan y dan un saltito. Termina a los 3.3 s.
+- Todo CSS; fuente de la foto recortada: fotos-fuente/portada-torta-recorte.png.
