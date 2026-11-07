@@ -11,6 +11,7 @@ interface SiteFooterProps {
 }
 
 const LEGAL: { type: Exclude<LegalModalType, null>; label: string }[] = [
+  { type: 'faq', label: 'Preguntas frecuentes' },
   { type: 'terms', label: 'Términos y condiciones' },
   { type: 'privacy', label: 'Privacidad' },
   { type: 'delivery', label: 'Entregas' },
@@ -80,6 +81,7 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({ onOpenLibro, onOpenLegal
 
     <div className="wrap site-footer__legal">
       <p suppressHydrationWarning>© {new Date().getFullYear()} JIRÉH Panadería y Pastelería · RUC {STORE_RUC}</p>
+      <p>Fotos provisionales de Unsplash</p>
       <button type="button" className="site-footer__admin" onClick={onOpenAdmin}>
         Administrar catálogo
       </button>

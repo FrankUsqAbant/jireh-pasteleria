@@ -9,7 +9,7 @@ const row: TortaRow = {
   descripcion: 'Chantilly y cerezas',
   porciones: '20 porciones',
   precio: '75.00',
-  imagen_url: '/assets/seamless/torta_selva_negra.webp',
+  imagen_url: '/assets/tortas/selva-negra.webp',
   imagen_path: null,
   etiqueta: null,
   destacada: true,
@@ -41,7 +41,7 @@ test('cakeToRow vuelve al formato de la base sin perder datos', () => {
 });
 
 test('solo se aceptan fotos del propio sitio', () => {
-  assert.ok(isTrustedImage('/assets/cropped/torta_rosas.webp'));
+  assert.ok(isTrustedImage('/assets/tortas/rosas-ensueno.webp'));
   assert.ok(!isTrustedImage('https://otro-sitio.com/foto.jpg'));
   assert.ok(!isTrustedImage('javascript:alert(1)'));
 });

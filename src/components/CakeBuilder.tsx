@@ -1,74 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { CakeSlice } from './CakeSlice';
-import { FILLINGS, FROSTINGS, HOUSE_CAKE, OCCASIONS, SPONGES, type CakeChoice } from '../data/layers';
+import { FILLINGS, FROSTINGS, OCCASIONS, PORTIONS, SPONGES } from '../data/layers';
 import { estimateCakePrice, generateWhatsAppOrderUrl } from '../utils/orderCalculator';
 
-/**
- * "Arma tu torta" (capa: relleno de manjar). El momento estrella del sitio: la tajada cambia en vivo
- * con cada elección y el pedido sale armado hacia WhatsApp.
- */
-
-interface ChipGroupProps<T extends { id: string; label: string }> {
-  legend: string;
-  step: number;
-  name: string;
-  options: readonly T[];
-  value: T;
-  onChange: (v: T) => void;
-  swatch?: (o: T) => string;
-}
-
-function ChipGroup<T extends { id: string; label: string }>({ legend, step, name, options, value, onChange, swatch }: ChipGroupProps<T>) {
-  return (
-    <fieldset className="chips">
-      <legend>
-        <span className="chips__step" aria-hidden="true">{step}</span>
-        {legend}
-      </legend>
-      <div className="chips__list">
-        {options.map((o) => (
-          <label key={o.id} className="chip">
-            <input type="radio" name={name} value={o.id} checked={value.id === o.id} onChange={() => onChange(o)} />
-            {swatch && <span className="chip__swatch" style={{ background: swatch(o) }} aria-hidden="true" />}
-            <span>{o.label}</span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
-const MIN_PORTIONS = 10;
-const MAX_PORTIONS = 80;
-
+/** "A medida": un formulario corto que arma el pedido y lo abre en WhatsApp. */
 export const CakeBuilder: React.FC = () => {
-  const [choice, setChoice] = useState<CakeChoice>(HOUSE_CAKE);
   const [occasion, setOccasion] = useState<string>(OCCASIONS[0]);
-  const [portions, setPortions] = useState(25);
+  const [sponge, setSponge] = useState<string>(SPONGES[0]);
+  const [filling, setFilling] = useState<string>(FILLINGS[0]);
+  const [frosting, setFrosting] = useState<string>(FROSTINGS[0].label);
+  const [portions, setPortions] = useState(20);
   const [date, setDate] = useState('');
   const [name, setName] = useState('');
-  const [dedication, setDedication] = useState('');
-  const [notes, setNotes] = useState('');
+  const [message, setMessage] = useState('');
 
-  const price = estimateCakePrice(portions, choice.frosting.specialty);
   // La fecha mínima se calcula en el navegador (el HTML pre-renderizado no sabe qué día es hoy)
   const [today, setToday] = useState<string | undefined>();
   useEffect(() => setToday(new Date().toISOString().slice(0, 10)), []);
-  const set = (patch: Partial<CakeChoice>) => setChoice((c) => ({ ...c, ...patch }));
 
-  const summary = `${choice.sponge.label}, con ${choice.filling1.label.toLowerCase()} y ${choice.filling2.label.toLowerCase()}. Cobertura: ${choice.frosting.label.toLowerCase()}.`;
+  const specialty = FROSTINGS.find((f) => f.label === frosting)?.specialty ?? false;
+  const price = estimateCakePrice(portions, specialty);
 
   const send = (e: React.FormEvent) => {
     e.preventDefault();
     const url = generateWhatsAppOrderUrl({
       category: occasion as never,
       portions,
-      spongeFlavor: choice.sponge.label,
-      filling1: choice.filling1.label,
-      filling2: choice.filling2.label,
-      frostingType: choice.frosting.label,
-      themeNotes: notes.trim(),
-      dedicationText: dedication.trim(),
+      spongeFlavor: sponge,
+      filling1: filling,
+      frostingType: frosting,
+      dedicationText: message.trim(),
       deliveryDate: date,
       customerName: name.trim(),
     });
@@ -76,91 +36,77 @@ export const CakeBuilder: React.FC = () => {
   };
 
   return (
-    <section id="arma" className="builder" aria-labelledby="arma-title">
-      <div className="wrap builder__grid">
-        <div className="builder__stage">
-          <div className="builder__sticky">
-            <CakeSlice choice={choice} className="builder__svg" />
-            <div className="builder__ticket" aria-live="polite">
-              <p className="builder__summary">{summary}</p>
-              <p className="builder__price">
-                {portions} porciones · desde <strong className="price">S/&nbsp;{price}</strong>
-              </p>
-            </div>
-          </div>
-        </div>
+    <section id="arma" className="medida" aria-labelledby="medida-title">
+      <div className="wrap medida__grid">
+        <figure className="medida__foto">
+          <img
+            src="/assets/portada/tajada.webp"
+            alt="Tajada de torta de vainilla con capas de crema rosada"
+            loading="lazy"
+            decoding="async"
+            width={1000}
+            height={1250}
+          />
+        </figure>
 
-        <form className="builder__form" onSubmit={send}>
-          <h2 id="arma-title" className="display builder__title">Arma tu torta</h2>
-          <p className="lede builder__lede">
-            Elige capa por capa y mira cómo queda. Al final te armamos el mensaje para WhatsApp y confirmamos
-            precio y fecha contigo.
-          </p>
+        <div className="medida__copy">
+          <h2 id="medida-title" className="display medida__title">Tu torta, a tu&nbsp;gusto</h2>
+          <p className="medida__lede">Cuéntanos cómo la quieres y te confirmamos precio y fecha por WhatsApp.</p>
 
-          <ChipGroup legend="Bizcocho" step={1} name="bizcocho" options={SPONGES} value={choice.sponge} onChange={(sponge) => set({ sponge })} swatch={(o) => o.color} />
-          <ChipGroup legend="Primer relleno" step={2} name="relleno1" options={FILLINGS} value={choice.filling1} onChange={(filling1) => set({ filling1 })} swatch={(o) => o.color} />
-          <ChipGroup legend="Segundo relleno" step={3} name="relleno2" options={FILLINGS} value={choice.filling2} onChange={(filling2) => set({ filling2 })} swatch={(o) => o.color} />
-          <ChipGroup legend="Cobertura" step={4} name="cobertura" options={FROSTINGS} value={choice.frosting} onChange={(frosting) => set({ frosting })} swatch={(o) => o.color} />
-
-          <fieldset className="details">
-            <legend>
-              <span className="chips__step" aria-hidden="true">5</span>
-              Tu celebración
-            </legend>
-
-            <div className="field field--wide">
-              <label htmlFor="porciones">
-                Porciones: <strong className="price">{portions}</strong>
-              </label>
-              <input
-                id="porciones"
-                type="range"
-                min={MIN_PORTIONS}
-                max={MAX_PORTIONS}
-                step={5}
-                value={portions}
-                onChange={(e) => setPortions(Number(e.target.value))}
-                aria-valuetext={`${portions} porciones`}
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="ocasion">Ocasión</label>
-              <select id="ocasion" value={occasion} onChange={(e) => setOccasion(e.target.value)}>
-                {OCCASIONS.map((o) => (
-                  <option key={o}>{o}</option>
-                ))}
+          <form className="medida__form" onSubmit={send}>
+            <div className="campo">
+              <label htmlFor="m-bizcocho">Bizcocho</label>
+              <select id="m-bizcocho" value={sponge} onChange={(e) => setSponge(e.target.value)}>
+                {SPONGES.map((o) => <option key={o}>{o}</option>)}
               </select>
             </div>
-
-            <div className="field">
-              <label htmlFor="fecha">Fecha de entrega</label>
-              <input id="fecha" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} />
+            <div className="campo">
+              <label htmlFor="m-relleno">Relleno</label>
+              <select id="m-relleno" value={filling} onChange={(e) => setFilling(e.target.value)}>
+                {FILLINGS.map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor="m-cobertura">Cobertura</label>
+              <select id="m-cobertura" value={frosting} onChange={(e) => setFrosting(e.target.value)}>
+                {FROSTINGS.map((o) => <option key={o.label}>{o.label}</option>)}
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor="m-porciones">Porciones</label>
+              <select id="m-porciones" value={portions} onChange={(e) => setPortions(Number(e.target.value))}>
+                {PORTIONS.map((p) => <option key={p} value={p}>{p} porciones</option>)}
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor="m-ocasion">Ocasión</label>
+              <select id="m-ocasion" value={occasion} onChange={(e) => setOccasion(e.target.value)}>
+                {OCCASIONS.map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </div>
+            <div className="campo">
+              <label htmlFor="m-fecha">Fecha</label>
+              <input id="m-fecha" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div className="campo campo--ancho">
+              <label htmlFor="m-nombre">Tu nombre</label>
+              <input id="m-nombre" type="text" autoComplete="given-name" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="campo campo--ancho">
+              <label htmlFor="m-mensaje">Mensaje en la torta (opcional)</label>
+              <input id="m-mensaje" type="text" maxLength={50} placeholder="Feliz cumpleaños, Ana" value={message} onChange={(e) => setMessage(e.target.value)} />
             </div>
 
-            <div className="field">
-              <label htmlFor="nombre">Tu nombre</label>
-              <input id="nombre" type="text" autoComplete="given-name" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
+            <div className="medida__enviar">
+              <p className="medida__precio" aria-live="polite">
+                Desde <strong className="price">S/&nbsp;{price}</strong>
+              </p>
+              <button type="submit" className="btn btn--solid-light btn--lg">
+                Enviar por WhatsApp <span className="btn__arrow" aria-hidden="true">→</span>
+              </button>
             </div>
-
-            <div className="field">
-              <label htmlFor="dedicatoria">Mensaje en la torta (opcional)</label>
-              <input id="dedicatoria" type="text" maxLength={50} placeholder="Feliz cumpleaños, Ana" value={dedication} onChange={(e) => setDedication(e.target.value)} />
-            </div>
-
-            <div className="field field--wide">
-              <label htmlFor="notas">Diseño o temática (opcional)</label>
-              <textarea id="notas" rows={2} maxLength={300} placeholder="Colores, personaje o una foto de referencia que nos mandarás por WhatsApp" value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </div>
-          </fieldset>
-
-          <div className="builder__send">
-            <button type="submit" className="btn btn--solid-dark btn--lg">
-              Enviar pedido por WhatsApp <span className="btn__arrow" aria-hidden="true">→</span>
-            </button>
-            <p className="builder__note">El precio es referencial. Lo confirmamos contigo según el diseño final.</p>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </section>
   );

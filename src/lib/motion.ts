@@ -1,6 +1,4 @@
-/** Movimiento del sitio: una sola curva, "asentar" (DESIGN.md). */
-export const SETTLE = 'power3.out';
-
+/** Utilidades de movimiento y navegación del sitio. */
 export function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

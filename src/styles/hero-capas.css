@@ -1,0 +1,170 @@
+/* Portada con la torta que cae por capas (vista previa: ?portada=capas) */
+.hero-capas {
+  position: relative;
+  background:
+    radial-gradient(60% 70% at 72% 55%, rgba(211, 154, 91, 0.18), rgba(211, 154, 91, 0) 70%),
+    var(--ganache);
+  color: var(--bizcocho);
+  overflow: clip;
+  scroll-margin-top: 68px;
+}
+.hero-capas__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gutter);
+  align-items: center;
+  min-height: min(calc(100svh - 68px), 860px);
+  padding-block: clamp(32px, 5vw, 64px);
+}
+.hero-capas__copy {
+  grid-column: 1 / span 5;
+  position: relative;
+  z-index: 1;
+}
+.hero-capas__title {
+  margin: 0;
+  font-size: clamp(2.8rem, 1.4rem + 4.6vw, 5.6rem);
+  line-height: 1;
+  margin-left: -0.04em;
+}
+.hero-capas__lede {
+  margin: 24px 0 0;
+  font-size: var(--t-m);
+  color: var(--muted-on-dark);
+}
+.hero-capas__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 40px;
+}
+.hero-capas__stage {
+  grid-column: 6 / -1;
+  margin-right: calc(var(--gutter) * -0.5);
+}
+.hero-capas__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* que la torta entre entera en la primera pantalla */
+  max-height: calc(100svh - 68px - 56px);
+  margin-inline: auto;
+  overflow: visible;
+}
+/* ------------------------- la torta que cae por capas -------------------------
+   CSS puro: corre desde que se pinta el HTML (no espera al JavaScript).
+   0.2 s  la base dorada y su sombra aparecen
+   0.75 s cada capa cae (acelera como al soltarla) y se aplasta un poco al apoyarse, cada 0.42 s
+   3.2 s  se muestra la foto entera y se ocultan las piezas (así no quedan uniones visibles) */
+.torta-sombra {
+  opacity: 0.5;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: sombra-aparece 0.7s var(--settle) both;
+}
+.torta-entera {
+  animation: mostrar 0s linear 3.2s both;
+}
+.piezas {
+  animation: ocultar 0s linear 3.2s both;
+}
+.pieza,
+.pieza__aplasta {
+  transform-box: view-box;
+}
+.pieza--base {
+  animation: base-aparece 0.7s var(--settle) both;
+}
+.pieza:not(.pieza--base) {
+  /* --i: 1 a 4 (orden de llegada) */
+  animation: caer 0.62s cubic-bezier(0.55, 0, 1, 0.45) calc(0.75s + (var(--i) - 1) * 0.42s) both;
+}
+.pieza:not(.pieza--base) .pieza__aplasta {
+  transform-origin: var(--apoyo);
+  animation: asentarse 0.55s var(--settle) calc(1.37s + (var(--i) - 1) * 0.42s) both;
+}
+
+@keyframes caer {
+  from {
+    transform: translateY(-1100px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes asentarse {
+  from {
+    transform: scaleY(0.965);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes base-aparece {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sombra-aparece {
+  from {
+    opacity: 0;
+    transform: scaleX(0.6);
+  }
+  to {
+    opacity: 0.5;
+    transform: none;
+  }
+}
+@keyframes mostrar {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ocultar {
+  from {
+    visibility: visible;
+  }
+  to {
+    visibility: hidden;
+  }
+}
+
+/* Movimiento reducido: la foto entera desde el principio */
+@media (prefers-reduced-motion: reduce) {
+  .torta-entera,
+  .torta-sombra {
+    animation: none;
+  }
+  .piezas {
+    display: none;
+  }
+}
+
+@media (max-width: 899px) {
+  .hero-capas__grid {
+    min-height: 0;
+    padding-block: 28px 40px;
+  }
+  .hero-capas__copy,
+  .hero-capas__stage {
+    grid-column: 1 / -1;
+  }
+  .hero-capas__stage {
+    margin: 12px calc(var(--gutter) * -0.5) 0;
+  }
+  .hero-capas__title {
+    font-size: clamp(2.5rem, 1.3rem + 6vw, 3.6rem);
+  }
+  .hero-capas__actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

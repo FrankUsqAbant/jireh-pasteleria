@@ -3,7 +3,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client';
 import App, { isAdminHash } from './App';
 import './index.css';
 import './styles/sections.css';
-import './styles/sections-lower.css';
+import './styles/hero-capas.css';
 
 const root = document.getElementById('root')!;
 const app = (
