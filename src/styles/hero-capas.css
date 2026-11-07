@@ -53,9 +53,9 @@
 }
 /* ------------------------- la torta que cae por capas -------------------------
    CSS puro: corre desde que se pinta el HTML (no espera al JavaScript).
-   0.2 s  la base dorada y su sombra aparecen
-   0.75 s cada capa cae (acelera como al soltarla) y se aplasta un poco al apoyarse, cada 0.42 s
-   3.2 s  se muestra la foto entera y se ocultan las piezas (así no quedan uniones visibles) */
+   0 s    la base dorada con la primera capa aparece y se apoya
+   0.45 s cada capa cae desde poco más arriba, aparece con un fundido y se asienta, cada 0.42 s
+   2.4 s  se muestra la foto entera y se ocultan las piezas (así no quedan uniones visibles) */
 .torta-sombra {
   opacity: 0.5;
   transform-box: fill-box;
@@ -63,10 +63,10 @@
   animation: sombra-aparece 0.7s var(--settle) both;
 }
 .torta-entera {
-  animation: mostrar 0s linear 3.2s both;
+  animation: mostrar 0s linear 2.4s both;
 }
 .piezas {
-  animation: ocultar 0s linear 3.2s both;
+  animation: ocultar 0s linear 2.4s both;
 }
 .pieza,
 .pieza__aplasta {
@@ -76,25 +76,33 @@
   animation: base-aparece 0.7s var(--settle) both;
 }
 .pieza:not(.pieza--base) {
-  /* --i: 1 a 4 (orden de llegada) */
-  animation: caer 0.62s cubic-bezier(0.55, 0, 1, 0.45) calc(0.75s + (var(--i) - 1) * 0.42s) both;
+  /* --i: 1 a 3 (orden de llegada) */
+  animation: caer 0.6s cubic-bezier(0.42, 0, 0.78, 0.4) calc(0.45s + (var(--i) - 1) * 0.42s) both;
 }
 .pieza:not(.pieza--base) .pieza__aplasta {
   transform-origin: var(--apoyo);
-  animation: asentarse 0.55s var(--settle) calc(1.37s + (var(--i) - 1) * 0.42s) both;
+  animation: asentarse 0.6s var(--settle) calc(1.05s + (var(--i) - 1) * 0.42s) both;
 }
 
 @keyframes caer {
   from {
-    transform: translateY(-1100px);
+    opacity: 0;
+    transform: translateY(-340px);
+  }
+  35% {
+    opacity: 1;
   }
   to {
+    opacity: 1;
     transform: none;
   }
 }
 @keyframes asentarse {
   from {
-    transform: scaleY(0.965);
+    transform: scaleY(0.975);
+  }
+  55% {
+    transform: scaleY(1.006);
   }
   to {
     transform: none;
@@ -103,7 +111,7 @@
 @keyframes base-aparece {
   from {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;
