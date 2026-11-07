@@ -15,6 +15,8 @@ export interface CakeItem {
   image: string;
   /** Ruta de la foto en Supabase Storage (solo si se subió desde el panel). */
   imagePath?: string;
+  /** Visible en la tienda (false: oculta, solo la ve el admin). */
+  isActive?: boolean;
   badge?: string;
   isPopular?: boolean;
   isCustomizable?: boolean;

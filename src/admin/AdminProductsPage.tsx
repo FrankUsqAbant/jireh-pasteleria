@@ -1,1188 +1,357 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ArrowLeft, Plus, Edit3, Trash2, Lock, KeyRound, Search, Star, Check, AlertCircle, Image as ImageIcon,
-  DollarSign, Layers, Tag, Eye, LayoutGrid, List, Download, Upload, CheckCircle2, Store, RefreshCw, Sparkles,
-} from 'lucide-react';
-import type { CakeCategory, CakeItem } from '../types/bakery';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ExternalLink, KeyRound, LogOut, Plus, Search, Star } from 'lucide-react';
+import type { CakeItem } from '../types/bakery';
 import { CAKE_CATEGORIES, LOGO_URL } from '../data/bakeryData';
-import { PRESET_PRODUCT_IMAGES } from './presetImages';
-import {
-  changePassword, createCake, deleteCake, deletePhoto, friendlyError, listCakes, updateCake, uploadPhoto,
-} from './adminApi';
+import { CakeForm, Interruptor } from './CakeForm';
+import { changePassword, createCake, deleteCake, friendlyError, listCakes, updateCake } from './adminApi';
 
 interface AdminProductsPageProps {
   onBackToStore: () => void;
   onLogout: () => void;
 }
 
-const DEFAULT_FLAVORS = 'Vainilla, Chocolate, Marmoleado';
-const DEFAULT_FILLINGS = 'Fudge casero, Manjar blanco cajamarquino';
-const splitList = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+type Vista = { tipo: 'lista' } | { tipo: 'editar'; cake?: CakeItem };
 
-/** Espacio de trabajo del administrador: catálogo, formulario de torta y ajustes de cuenta. */
+const etiquetaCategoria = (id: string) => CAKE_CATEGORIES.find((c) => c.id === id)?.label ?? id;
+
+/**
+ * Panel del dueño: la lista de tortas con lo que más se usa a un toque (ocultar, destacar, editar)
+ * y el formulario para agregar o editar. Pensado primero para el celular.
+ */
 export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ onBackToStore, onLogout }) => {
-  // Catálogo (desde Supabase)
   const [products, setProducts] = useState<CakeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [vista, setVista] = useState<Vista>({ tipo: 'lista' });
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('todas');
+  const [aviso, setAviso] = useState<{ texto: string; error?: boolean } | null>(null);
+  const [aBorrar, setABorrar] = useState<CakeItem | null>(null);
+  const [cuentaAbierta, setCuentaAbierta] = useState(false);
+  const avisoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Active view tab
-  const [activeTab, setActiveTab] = useState<'catalog' | 'new_product' | 'settings'>('catalog');
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-
-  // Search, Filter and Sort
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('todos');
-  const [sortBy, setSortBy] = useState<'name' | 'price_asc' | 'price_desc' | 'popular'>('popular');
-
-  // Edit / Form state
-  const [editingProduct, setEditingProduct] = useState<CakeItem | null>(null);
-  const [productToDelete, setProductToDelete] = useState<CakeItem | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Form Fields
-  const [formName, setFormName] = useState('');
-  const [formCategory, setFormCategory] = useState<CakeCategory>('cumpleanos');
-  const [formDescription, setFormDescription] = useState('');
-  const [formPortions, setFormPortions] = useState('20-25 porciones');
-  const [formPrice, setFormPrice] = useState<number>(85);
-  const [formImage, setFormImage] = useState(PRESET_PRODUCT_IMAGES[0].url);
-  /** Ruta en Storage de la foto subida en este formulario (si la hay). */
-  const [formImagePath, setFormImagePath] = useState<string | undefined>();
-  const [uploading, setUploading] = useState(false);
-  const [formBadge, setFormBadge] = useState('');
-  const [formIsPopular, setFormIsPopular] = useState(false);
-  const [formIsCustomizable, setFormIsCustomizable] = useState(true);
-  const [formFlavors, setFormFlavors] = useState(DEFAULT_FLAVORS);
-  const [formFillings, setFormFillings] = useState(DEFAULT_FILLINGS);
-
-  // Settings State
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
-
-  const fail = (err: unknown) => setErrorMessage(friendlyError(err));
+  const avisar = useCallback((texto: string, error = false) => {
+    clearTimeout(avisoTimer.current);
+    setAviso({ texto, error });
+    avisoTimer.current = setTimeout(() => setAviso(null), error ? 6000 : 3000);
+  }, []);
+  const fallo = useCallback((err: unknown) => avisar(friendlyError(err), true), [avisar]);
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
       setProducts(await listCakes());
-      setErrorMessage(null);
     } catch (err) {
-      fail(err);
+      fallo(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fallo]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
 
-  /** Descarta una foto subida en el formulario que no llegó a guardarse. */
-  const discardUnsavedPhoto = () => {
-    if (formImagePath && formImagePath !== editingProduct?.imagePath) void deletePhoto(formImagePath);
-  };
+  // Al cambiar de pantalla, volver arriba
+  useEffect(() => {
+    window.scrollTo({ top: 0 }); // en llaves: scrollTo puede devolver una promesa y React la tomaría como limpieza
+  }, [vista]);
 
-  // Form reset / open
-  const startNewProduct = () => {
-    discardUnsavedPhoto();
-    setFormName('');
-    setFormCategory('cumpleanos');
-    setFormDescription('');
-    setFormPortions('20-25 porciones');
-    setFormPrice(85);
-    setFormImage(PRESET_PRODUCT_IMAGES[0].url);
-    setFormImagePath(undefined);
-    setFormBadge('');
-    setFormIsPopular(false);
-    setFormIsCustomizable(true);
-    setFormFlavors(DEFAULT_FLAVORS);
-    setFormFillings(DEFAULT_FILLINGS);
-    setEditingProduct(null);
-    setActiveTab('new_product');
-  };
+  const reemplazar = (saved: CakeItem) => setProducts((list) => list.map((p) => (p.id === saved.id ? saved : p)));
 
-  const startEditProduct = (item: CakeItem) => {
-    discardUnsavedPhoto();
-    setFormName(item.name);
-    setFormCategory(item.category);
-    setFormDescription(item.description);
-    setFormPortions(item.portions);
-    setFormPrice(item.basePrice);
-    setFormImage(item.image);
-    setFormImagePath(item.imagePath);
-    setFormBadge(item.badge || '');
-    setFormIsPopular(Boolean(item.isPopular));
-    setFormIsCustomizable(Boolean(item.isCustomizable));
-    setFormFlavors(item.flavors ? item.flavors.join(', ') : DEFAULT_FLAVORS);
-    setFormFillings(item.fillings ? item.fillings.join(', ') : DEFAULT_FILLINGS);
-    setEditingProduct(item);
-    setActiveTab('new_product');
-  };
-
-  const cancelForm = () => {
-    discardUnsavedPhoto();
-    setFormImagePath(undefined);
-    setEditingProduct(null);
-    setActiveTab('catalog');
-  };
-
-  const handlePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setUploading(true);
+  /** Cambios rápidos desde la lista (visible / destacada): se ven al instante y se guardan. */
+  const cambiar = async (cake: CakeItem, patch: Partial<CakeItem>, mensaje: string) => {
+    const nuevo = { ...cake, ...patch };
+    reemplazar(nuevo);
     try {
-      discardUnsavedPhoto();
-      const { url, path } = await uploadPhoto(file);
-      setFormImage(url);
-      setFormImagePath(path);
+      const { id: _id, ...datos } = nuevo;
+      reemplazar(await updateCake(cake.id, datos));
+      avisar(mensaje);
     } catch (err) {
-      fail(err);
-    } finally {
-      setUploading(false);
+      reemplazar(cake); // deshacer
+      fallo(err);
     }
   };
 
-  const choosePreset = (url: string) => {
-    discardUnsavedPhoto();
-    setFormImage(url);
-    setFormImagePath(undefined);
-  };
-
-  const handleSaveProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formName.trim() || formPrice <= 0 || busy) return;
-
-    const flavors = splitList(formFlavors);
-    const fillings = splitList(formFillings);
-    const data: Omit<CakeItem, 'id'> = {
-      name: formName.trim(),
-      category: formCategory,
-      description: formDescription.trim() || 'Elaborada artesanalmente con ingredientes seleccionados de Cajamarca.',
-      portions: formPortions.trim() || '20-25 porciones',
-      basePrice: Number(formPrice),
-      image: formImage,
-      imagePath: formImagePath,
-      badge: formBadge.trim() || undefined,
-      isPopular: formIsPopular,
-      isCustomizable: formIsCustomizable,
-      flavors: flavors.length ? flavors : undefined,
-      fillings: fillings.length ? fillings : undefined,
-    };
-
+  const guardar = async (datos: Omit<CakeItem, 'id'>) => {
+    if (vista.tipo !== 'editar') return;
     setBusy(true);
     try {
-      if (editingProduct) {
-        const saved = await updateCake(editingProduct.id, data, editingProduct.imagePath);
-        setProducts((list) => list.map((p) => (p.id === saved.id ? saved : p)));
-        showToast(`Torta "${saved.name}" actualizada.`);
+      if (vista.cake) {
+        reemplazar(await updateCake(vista.cake.id, datos, vista.cake.imagePath));
+        avisar(`Guardamos "${datos.name}".`);
       } else {
-        const saved = await createCake(data);
-        setProducts((list) => [saved, ...list]);
-        showToast(`Torta "${saved.name}" publicada.`);
+        const nueva = await createCake(datos);
+        setProducts((list) => [nueva, ...list]);
+        avisar(`"${datos.name}" ya está en la tienda.`);
       }
-      setFormImagePath(undefined);
-      setEditingProduct(null);
-      setActiveTab('catalog');
+      setVista({ tipo: 'lista' });
     } catch (err) {
-      fail(err);
+      fallo(err);
     } finally {
       setBusy(false);
     }
   };
 
-  const handleTogglePopular = async (item: CakeItem) => {
-    try {
-      const saved = await updateCake(item.id, { ...item, isPopular: !item.isPopular });
-      setProducts((list) => list.map((p) => (p.id === saved.id ? saved : p)));
-      showToast(`"${item.name}" ${saved.isPopular ? 'ahora es destacada' : 'ya no es destacada'}.`);
-    } catch (err) {
-      fail(err);
-    }
-  };
-
-  const handleDeleteProduct = async () => {
-    if (!productToDelete) return;
+  const borrar = async () => {
+    if (!aBorrar) return;
     setBusy(true);
     try {
-      await deleteCake(productToDelete);
-      setProducts((list) => list.filter((p) => p.id !== productToDelete.id));
-      showToast(`"${productToDelete.name}" eliminada del catálogo.`);
-      setProductToDelete(null);
+      await deleteCake(aBorrar);
+      setProducts((list) => list.filter((p) => p.id !== aBorrar.id));
+      avisar(`Eliminamos "${aBorrar.name}".`);
+      setABorrar(null);
+      setVista({ tipo: 'lista' });
     } catch (err) {
-      fail(err);
+      fallo(err);
     } finally {
       setBusy(false);
     }
   };
 
-  const passwordValid = newPassword.length >= 10 && newPassword === confirmPassword;
+  const q = query.trim().toLowerCase();
+  const filtradas = products
+    .filter((p) => category === 'todas' || p.category === category)
+    .filter((p) => !q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
+  const visibles = products.filter((p) => p.isActive !== false).length;
+  const destacadas = products.filter((p) => p.isPopular).length;
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
+  return (
+    <div className="adm">
+      <header className="adm-top">
+        <div className="adm-top__bar">
+          <div className="adm-marca">
+            <img src={LOGO_URL} alt="" />
+            <div>
+              <strong>JIRÉH</strong>
+              <span>Panel de la tienda</span>
+            </div>
+          </div>
+          <div className="adm-top__acciones">
+            <button type="button" className="adm-btn adm-btn--claro" onClick={onBackToStore} aria-label="Ver la tienda">
+              <ExternalLink aria-hidden="true" />
+              <span className="adm-ocultar-movil">Ver la tienda</span>
+            </button>
+            <button type="button" className="adm-btn adm-btn--claro adm-btn--icono" onClick={() => setCuentaAbierta(true)} aria-label="Mi cuenta">
+              <KeyRound aria-hidden="true" />
+            </button>
+            <button type="button" className="adm-btn adm-btn--claro adm-btn--icono" onClick={onLogout} aria-label="Cerrar sesión">
+              <LogOut aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="adm-main">
+        {vista.tipo === 'editar' ? (
+          <CakeForm
+            key={vista.cake?.id ?? 'nueva'}
+            cake={vista.cake}
+            busy={busy}
+            onSave={guardar}
+            onCancel={() => setVista({ tipo: 'lista' })}
+            onDelete={vista.cake ? () => setABorrar(vista.cake!) : undefined}
+            onError={(m) => avisar(m, true)}
+          />
+        ) : (
+          <>
+            <div className="adm-encabezado">
+              <div>
+                <h1>Tus tortas</h1>
+                <p className="adm-resumen" aria-live="polite">
+                  {loading && products.length === 0
+                    ? 'Cargando…'
+                    : `${products.length} tortas · ${visibles} visibles en la tienda · ${destacadas} destacadas`}
+                </p>
+              </div>
+              <button type="button" className="adm-btn adm-btn--principal" onClick={() => setVista({ tipo: 'editar' })}>
+                <Plus aria-hidden="true" /> Agregar torta
+              </button>
+            </div>
+
+            <div className="adm-herramientas">
+              <label className="adm-buscar">
+                <Search aria-hidden="true" />
+                <span className="sr-only">Buscar torta</span>
+                <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre" />
+              </label>
+            </div>
+            <div className="adm-chips" role="group" aria-label="Filtrar por categoría">
+              {[{ id: 'todas', label: 'Todas' }, ...CAKE_CATEGORIES].map((c) => (
+                <button key={c.id} type="button" className="adm-chip" aria-pressed={category === c.id} onClick={() => setCategory(c.id)}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+
+            {filtradas.length === 0 ? (
+              <div className="adm-vacio">
+                {loading ? 'Cargando tortas…' : products.length === 0 ? 'Todavía no hay tortas. Agrega la primera.' : 'No hay tortas con ese filtro.'}
+              </div>
+            ) : (
+              <ul className="adm-lista">
+                {filtradas.map((cake) => {
+                  const visible = cake.isActive !== false;
+                  return (
+                    <li key={cake.id} className="adm-fila" data-oculta={!visible || undefined}>
+                      <img className="adm-fila__foto" src={cake.image} alt="" loading="lazy" />
+                      <button type="button" className="adm-fila__texto" onClick={() => setVista({ tipo: 'editar', cake })}>
+                        <span className="adm-fila__nombre">{cake.name}</span>
+                        <span className="adm-fila__meta">
+                          {etiquetaCategoria(cake.category)} · <span className="adm-precio">S/ {cake.basePrice}</span>
+                        </span>
+                        {!visible && <span className="adm-fila__estado">Oculta en la tienda</span>}
+                        <span className="sr-only">, editar</span>
+                      </button>
+                      <div className="adm-fila__acciones">
+                        <Interruptor
+                          compacto
+                          titulo="Visible"
+                          etiqueta={`Visible en la tienda: ${cake.name}`}
+                          checked={visible}
+                          onChange={(v) => cambiar(cake, { isActive: v }, v ? `"${cake.name}" vuelve a verse en la tienda.` : `"${cake.name}" quedó oculta.`)}
+                        />
+                        <button
+                          type="button"
+                          className="adm-estrella"
+                          aria-pressed={Boolean(cake.isPopular)}
+                          aria-label={`Destacada: ${cake.name}`}
+                          onClick={() => cambiar(cake, { isPopular: !cake.isPopular }, cake.isPopular ? 'Ya no está destacada.' : 'Ahora aparece entre las primeras.')}
+                        >
+                          <Star aria-hidden="true" fill={cake.isPopular ? 'currentColor' : 'none'} />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
+        )}
+      </main>
+
+      <ConfirmarBorrado cake={aBorrar} busy={busy} onCancel={() => setABorrar(null)} onConfirm={borrar} />
+      <MiCuenta abierta={cuentaAbierta} onClose={() => setCuentaAbierta(false)} products={products} onReload={reload} avisar={avisar} />
+
+      {aviso && (
+        <div className="adm-aviso" role={aviso.error ? 'alert' : 'status'} data-error={aviso.error || undefined}>
+          {aviso.texto}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ---------------------------------- diálogos ---------------------------------- */
+
+/** <dialog> nativo: atrapa el foco y se cierra con Escape. */
+function useDialogo(abierto: boolean) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (abierto && !d.open) d.showModal();
+    if (!abierto && d.open) d.close();
+  }, [abierto]);
+  return ref;
+}
+
+const ConfirmarBorrado: React.FC<{ cake: CakeItem | null; busy: boolean; onCancel: () => void; onConfirm: () => void }> = ({ cake, busy, onCancel, onConfirm }) => {
+  const ref = useDialogo(Boolean(cake));
+  return (
+    <dialog ref={ref} className="adm-dialogo" onClose={onCancel} aria-labelledby="borrar-titulo">
+      <div className="adm-dialogo__cuerpo">
+        <h2 id="borrar-titulo">¿Eliminar {cake?.name}?</h2>
+        <p>Se borra de la tienda y no se puede deshacer. Si solo quieres dejar de mostrarla, apaga "Visible".</p>
+        <div className="adm-dialogo__botones">
+          <button type="button" className="adm-btn adm-btn--borde" onClick={onCancel}>
+            Cancelar
+          </button>
+          <button type="button" className="adm-btn adm-btn--peligro" onClick={onConfirm} disabled={busy}>
+            {busy ? 'Eliminando…' : 'Sí, eliminar'}
+          </button>
+        </div>
+      </div>
+    </dialog>
+  );
+};
+
+const MiCuenta: React.FC<{
+  abierta: boolean;
+  onClose: () => void;
+  products: CakeItem[];
+  onReload: () => void;
+  avisar: (t: string, error?: boolean) => void;
+}> = ({ abierta, onClose, products, onReload, avisar }) => {
+  const ref = useDialogo(abierta);
+  const [clave, setClave] = useState('');
+  const [repetir, setRepetir] = useState('');
+  const [busy, setBusy] = useState(false);
+  const valida = clave.length >= 10 && clave === repetir;
+
+  const guardarClave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passwordValid) return;
+    if (!valida) return;
     setBusy(true);
     try {
-      await changePassword(newPassword);
-      setNewPassword('');
-      setConfirmPassword('');
-      setPasswordSuccess(true);
-      setTimeout(() => setPasswordSuccess(false), 3000);
-      showToast('Contraseña actualizada.');
+      await changePassword(clave);
+      setClave('');
+      setRepetir('');
+      avisar('Contraseña actualizada.');
+      onClose();
     } catch (err) {
-      fail(err);
+      avisar(friendlyError(err), true);
     } finally {
       setBusy(false);
     }
   };
 
-  const handleExportJSON = () => {
+  const descargar = () => {
     const blob = new Blob([JSON.stringify(products, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `catalogo_jireh_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `tortas-jireh-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Copia de seguridad descargada.');
   };
 
-  // Filter & Sort
-  const query = searchQuery.toLowerCase();
-  const filteredProducts = products.filter((p) => {
-    const matchCat = categoryFilter === 'todos' || p.category === categoryFilter;
-    const matchSearch =
-      p.name.toLowerCase().includes(query) ||
-      p.description.toLowerCase().includes(query) ||
-      p.portions.toLowerCase().includes(query);
-    return matchCat && matchSearch;
-  });
-
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'popular') {
-      if (a.isPopular && !b.isPopular) return -1;
-      if (!a.isPopular && b.isPopular) return 1;
-      return a.name.localeCompare(b.name);
-    }
-    if (sortBy === 'price_asc') return a.basePrice - b.basePrice;
-    if (sortBy === 'price_desc') return b.basePrice - a.basePrice;
-    return a.name.localeCompare(b.name);
-  });
-
-  // KPI Calculations
-  const totalProducts = products.length;
-  const featuredCount = products.filter((p) => p.isPopular).length;
-  const avgPrice = totalProducts > 0
-    ? Math.round(products.reduce((acc, p) => acc + p.basePrice, 0) / totalProducts)
-    : 0;
-
-
-  // =========================================================================
-  // VIEW 2: FULL-PAGE ADMIN DASHBOARD & WORKSPACE
-  // =========================================================================
   return (
-    <div className="min-h-screen bg-[#0e0805] text-[#faf3e8] flex flex-col font-sans selection:bg-[#d69c4f] selection:text-[#150e09]">
-      
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#d69c4f] text-[#150e09] px-5 py-2.5 rounded-full font-bold text-xs sm:text-sm shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
-          <CheckCircle2 className="w-4 h-4" />
-          <span>{toastMessage}</span>
+    <dialog ref={ref} className="adm-dialogo" onClose={onClose} aria-labelledby="cuenta-titulo">
+      <form className="adm-dialogo__cuerpo" onSubmit={guardarClave}>
+        <h2 id="cuenta-titulo">Mi cuenta</h2>
+        <div className="adm-campo">
+          <label htmlFor="c-nueva">Nueva contraseña</label>
+          <input id="c-nueva" type="password" autoComplete="new-password" minLength={10} value={clave} onChange={(e) => setClave(e.target.value)} />
+          <p className="adm-ayuda">Mínimo 10 caracteres.</p>
         </div>
-      )}
-
-      {/* Error del servidor */}
-      {errorMessage && (
-        <div role="alert" className="fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-[calc(100vw-2rem)] bg-[#2a1313] border border-red-500/50 text-red-100 px-5 py-2.5 rounded-2xl text-xs sm:text-sm shadow-2xl flex items-center gap-3">
-          <AlertCircle className="w-4 h-4 shrink-0 text-red-300" />
-          <span>{errorMessage}</span>
-          <button onClick={() => setErrorMessage(null)} className="ml-1 underline text-red-200 hover:text-white cursor-pointer">
+        <div className="adm-campo">
+          <label htmlFor="c-repetir">Repite la contraseña</label>
+          <input id="c-repetir" type="password" autoComplete="new-password" value={repetir} onChange={(e) => setRepetir(e.target.value)} />
+          {repetir && clave !== repetir && <p className="adm-ayuda" style={{ color: 'var(--fresa)' }}>No coinciden.</p>}
+        </div>
+        <div className="adm-dialogo__botones">
+          <button type="submit" className="adm-btn adm-btn--principal" disabled={!valida || busy}>
+            {busy ? 'Guardando…' : 'Cambiar contraseña'}
+          </button>
+        </div>
+        <hr className="adm-separador" />
+        <p>Copia de tus tortas y precios, por si la necesitas.</p>
+        <div className="adm-dialogo__botones" style={{ justifyContent: 'flex-start' }}>
+          <button type="button" className="adm-btn adm-btn--borde" onClick={descargar} disabled={products.length === 0}>
+            Descargar copia
+          </button>
+          <button type="button" className="adm-btn adm-btn--borde" onClick={onReload}>
+            Volver a cargar
+          </button>
+        </div>
+        <hr className="adm-separador" />
+        <div className="adm-dialogo__botones">
+          <button type="button" className="adm-btn adm-btn--borde" onClick={onClose}>
             Cerrar
           </button>
         </div>
-      )}
-
-      {/* 1. TOP STICKY HEADER */}
-      <header className="sticky top-0 z-40 bg-[#150e09]/95 backdrop-blur-md border-b border-[#2d1b11] px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        
-        {/* Left: Back to store & brand */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBackToStore}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#22150d] hover:bg-[#311e13] border border-[#4a2e1c] text-xs font-semibold text-[#faf3e8] transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-sm"
-            title="Regresar a la página principal de la tienda"
-          >
-            <ArrowLeft className="w-4 h-4 text-[#e8b66f]" />
-            <span className="hidden sm:inline">Volver a la Tienda Web</span>
-            <span className="sm:hidden">Tienda</span>
-          </button>
-
-          <div className="h-6 w-px bg-[#39261a] hidden sm:block" />
-
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#faf3e8] p-0.5 border border-[#d69c4f] shrink-0 overflow-hidden">
-              <img src={LOGO_URL} alt="JIRÉH" className="w-full h-full object-cover rounded-full" />
-            </div>
-            <div>
-              <h1 className="font-serif text-sm sm:text-base font-bold text-[#faf3e8] leading-tight">
-                Panel de Administración JIRÉH
-              </h1>
-              <p className="text-[11px] text-[#b97f33] leading-tight flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Gestión de Catálogo y Tortas</span>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Quick actions & Logout */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${
-              activeTab === 'settings'
-                ? 'bg-[#d69c4f] text-[#150e09] font-bold border-[#d69c4f]'
-                : 'bg-[#1b120c] text-[#dfcca9] border-[#39261a] hover:bg-[#251911]'
-            }`}
-          >
-            <KeyRound className="w-3.5 h-3.5 inline mr-1 text-[#e8b66f]" />
-            <span className="hidden sm:inline">Ajustes y Contraseña</span>
-          </button>
-
-          <button
-            onClick={onLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#251911] hover:bg-[#342216] border border-[#39261a] text-xs text-[#dfcca9] hover:text-[#faf3e8] transition-colors cursor-pointer"
-            title="Cerrar sesión de administrador"
-          >
-            <Lock className="w-3.5 h-3.5 text-[#e8b66f]" />
-            <span className="hidden sm:inline">Salir</span>
-          </button>
-        </div>
-
-      </header>
-
-      {/* 2. MAIN BODY */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 space-y-6">
-
-        {/* KPI Summary Cards Banner */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-          <div className="bg-[#150e09] border border-[#2d1b11] p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
-            <div className="w-11 h-11 rounded-xl bg-[#b97f33]/20 border border-[#d69c4f]/40 flex items-center justify-center text-[#e8b66f] shrink-0">
-              <Layers className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] text-[#a89078] uppercase font-semibold tracking-wider">Total Productos</p>
-              <p className="font-serif text-2xl font-bold text-[#faf3e8]">{totalProducts}</p>
-            </div>
-          </div>
-
-          <div className="bg-[#150e09] border border-[#2d1b11] p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
-            <div className="w-11 h-11 rounded-xl bg-amber-900/30 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
-              <Star className="w-5 h-5 fill-current" />
-            </div>
-            <div>
-              <p className="text-[11px] text-[#a89078] uppercase font-semibold tracking-wider">Destacadas Portada</p>
-              <p className="font-serif text-2xl font-bold text-[#e8b66f]">{featuredCount}</p>
-            </div>
-          </div>
-
-          <div className="bg-[#150e09] border border-[#2d1b11] p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
-            <div className="w-11 h-11 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
-              <DollarSign className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] text-[#a89078] uppercase font-semibold tracking-wider">Precio Promedio</p>
-              <p className="font-serif text-2xl font-bold text-[#faf3e8]">S/. {avgPrice}</p>
-            </div>
-          </div>
-
-          <div className="bg-[#150e09] border border-[#2d1b11] p-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
-            <div className="w-11 h-11 rounded-xl bg-purple-950/40 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] text-[#a89078] uppercase font-semibold tracking-wider">Categorías</p>
-              <p className="font-serif text-2xl font-bold text-[#faf3e8]">{CAKE_CATEGORIES.length}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation Tabs (Catálogo vs Nueva Torta vs Ajustes) */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-[#2d1b11] pb-4">
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('catalog')}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === 'catalog'
-                  ? 'bg-[#d69c4f] text-[#150e09] shadow-md font-bold'
-                  : 'bg-[#150e09] text-[#dfcca9] hover:bg-[#251911] border border-[#2d1b11]'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>Catálogo ({totalProducts})</span>
-            </button>
-
-            <button
-              onClick={startNewProduct}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === 'new_product'
-                  ? 'bg-[#d69c4f] text-[#150e09] shadow-md font-bold'
-                  : 'bg-[#150e09] text-[#dfcca9] hover:bg-[#251911] border border-[#2d1b11]'
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-              <span>{editingProduct ? 'Editar Producto' : 'Nueva Torta / Producto'}</span>
-            </button>
-          </div>
-
-          {activeTab === 'catalog' && (
-            <div className="flex items-center gap-2 self-end sm:self-auto">
-              <div className="flex items-center bg-[#150e09] border border-[#39261a] rounded-xl p-1">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                    viewMode === 'grid' ? 'bg-[#d69c4f] text-[#150e09]' : 'text-[#a89078] hover:text-white'
-                  }`}
-                  title="Vista Cuadrícula (Cards)"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('table')}
-                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                    viewMode === 'table' ? 'bg-[#d69c4f] text-[#150e09]' : 'text-[#a89078] hover:text-white'
-                  }`}
-                  title="Vista Tabla (Lista)"
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
-
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-3 py-2 rounded-xl bg-[#150e09] border border-[#39261a] text-xs text-[#dfcca9] focus:outline-none focus:border-[#d69c4f]"
-              >
-                <option value="popular">★ Destacadas primero</option>
-                <option value="name">Alfabético (A-Z)</option>
-                <option value="price_asc">Precio: Menor a Mayor</option>
-                <option value="price_desc">Precio: Mayor a Menor</option>
-              </select>
-            </div>
-          )}
-
-        </div>
-
-        {/* =================================================================== */}
-        {/* TAB 1: CATALOG OVERVIEW (GRID OR TABLE)                            */}
-        {/* =================================================================== */}
-        {activeTab === 'catalog' && (
-          <div className="space-y-5">
-            
-            {/* Search Bar & Category Filters */}
-            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-              <div className="relative flex-1 max-w-lg">
-                <Search className="w-4 h-4 text-[#a89078] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar por nombre de torta, porciones o detalles..."
-                  className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-[#150e09] border border-[#39261a] text-xs sm:text-sm text-[#faf3e8] placeholder-[#7d6754] focus:outline-none focus:border-[#d69c4f]"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a89078] hover:text-white"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-
-              {/* Category Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                <button
-                  onClick={() => setCategoryFilter('todos')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
-                    categoryFilter === 'todos'
-                      ? 'bg-[#d69c4f] text-[#150e09] font-bold shadow-sm'
-                      : 'bg-[#150e09] text-[#dfcca9] hover:bg-[#251911] border border-[#2d1b11]'
-                  }`}
-                >
-                  Todas ({products.length})
-                </button>
-                {CAKE_CATEGORIES.map((cat) => {
-                  const count = products.filter((p) => p.category === cat.id).length;
-                  const isActive = categoryFilter === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setCategoryFilter(cat.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1 cursor-pointer ${
-                        isActive
-                          ? 'bg-[#d69c4f] text-[#150e09] font-bold shadow-sm'
-                          : 'bg-[#150e09] text-[#dfcca9] hover:bg-[#251911] border border-[#2d1b11]'
-                      }`}
-                    >
-
-                      <span>{cat.label}</span>
-                      <span className="opacity-70 text-[10px]">({count})</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Cargando / vacío */}
-            {loading && products.length === 0 ? (
-              <div className="text-center py-16 bg-[#150e09] rounded-3xl border border-[#2d1b11]" aria-live="polite">
-                <p className="text-sm text-[#dfcca9]">Cargando catálogo…</p>
-              </div>
-            ) : sortedProducts.length === 0 ? (
-              <div className="text-center py-16 bg-[#150e09] rounded-3xl border border-dashed border-[#39261a]">
-                <p className="text-base text-[#dfcca9] mb-3">No se encontraron tortas con los filtros actuales.</p>
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setCategoryFilter('todos');
-                  }}
-                  className="px-4 py-2 rounded-xl bg-[#251911] hover:bg-[#342216] border border-[#d69c4f]/40 text-xs text-[#faf3e8]"
-                >
-                  Limpiar Filtros
-                </button>
-              </div>
-            ) : viewMode === 'grid' ? (
-              /* GRID VIEW (CARDS) */
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {sortedProducts.map((cake) => (
-                  <div
-                    key={cake.id}
-                    className="bg-[#150e09] border border-[#2d1b11] hover:border-[#d69c4f]/50 rounded-2xl p-4 flex flex-col justify-between transition-all group hover:shadow-xl"
-                  >
-                    <div>
-                      {/* Image Thumbnail & Badges */}
-                      <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-[#0a0604] border border-[#39261a] mb-3.5">
-                        <img
-                          src={cake.image}
-                          alt={cake.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/assets/tortas/chocolate-drip.webp';
-                          }}
-                        />
-
-                        {/* Top floating badges */}
-                        <div className="absolute top-2 left-2 flex items-center gap-1.5 flex-wrap">
-                          {cake.isPopular && (
-                            <span className="bg-[#d69c4f] text-[#150e09] font-bold text-[10px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-md">
-                              <Star className="w-2.5 h-2.5 fill-current" /> En Portada
-                            </span>
-                          )}
-                          {cake.badge && (
-                            <span className="bg-[#1b120c]/90 text-[#e8b66f] border border-[#d69c4f]/50 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                              {cake.badge}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Category tag */}
-                        <div className="absolute bottom-2 right-2 bg-black/80 text-[10px] text-[#dfcca9] px-2 py-0.5 rounded capitalize backdrop-blur-xs">
-                          {cake.category}
-                        </div>
-                      </div>
-
-                      {/* Title & Price */}
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="font-serif text-base font-bold text-[#faf3e8] leading-snug group-hover:text-[#e8b66f] transition-colors">
-                          {cake.name}
-                        </h3>
-                        <span className="text-base font-bold font-mono text-[#e8b66f] shrink-0">
-                          S/. {cake.basePrice.toFixed(2)}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-[#dfcca9] line-clamp-2 mb-3">
-                        {cake.description}
-                      </p>
-
-                      <div className="text-[11px] text-[#a89078] flex items-center gap-2 mb-4">
-                        <span>Rendimiento: <strong className="text-[#faf3e8]">{cake.portions}</strong></span>
-                        {cake.isCustomizable && (
-                          <>
-                            <span>•</span>
-                            <span className="text-emerald-400">Personalizable</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="pt-3 border-t border-[#251911] flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => handleTogglePopular(cake)}
-                        className={`flex-1 py-1.5 px-2 rounded-lg border text-xs font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer ${
-                          cake.isPopular
-                            ? 'bg-[#d69c4f]/20 border-[#d69c4f] text-[#e8b66f]'
-                            : 'bg-[#1b120c] border-[#39261a] text-[#88705b] hover:text-[#faf3e8]'
-                        }`}
-                        title={cake.isPopular ? 'Quitar de portada de inicio' : 'Mostrar en carrusel de inicio'}
-                      >
-                        <Star className={`w-3.5 h-3.5 ${cake.isPopular ? 'fill-current' : ''}`} />
-                        <span>{cake.isPopular ? 'En Portada' : 'Destacar'}</span>
-                      </button>
-
-                      <button
-                        onClick={() => startEditProduct(cake)}
-                        className="py-1.5 px-3 rounded-lg bg-[#22150d] hover:bg-[#311e13] border border-[#d69c4f]/40 text-xs font-semibold text-[#faf3e8] flex items-center gap-1 transition-colors cursor-pointer"
-                        title="Editar información"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-[#e8b66f]" />
-                        <span>Editar</span>
-                      </button>
-
-                      <button
-                        onClick={() => setProductToDelete(cake)}
-                        className="py-1.5 px-2 rounded-lg bg-red-950/30 hover:bg-red-900/40 border border-red-500/30 text-xs text-red-300 hover:text-white transition-colors cursor-pointer"
-                        title="Eliminar producto"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                  </div>
-                ))}
-              </div>
-            ) : (
-              /* TABLE VIEW (LIST) */
-              <div className="bg-[#150e09] border border-[#2d1b11] rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#1e130c] text-[#a89078] uppercase text-[10px] tracking-wider border-b border-[#2d1b11]">
-                      <tr>
-                        <th className="py-3 px-4">Foto</th>
-                        <th className="py-3 px-4">Torta / Producto</th>
-                        <th className="py-3 px-4">Categoría</th>
-                        <th className="py-3 px-4">Porciones</th>
-                        <th className="py-3 px-4">Precio Base</th>
-                        <th className="py-3 px-4 text-center">En Portada</th>
-                        <th className="py-3 px-4 text-right">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#251911]">
-                      {sortedProducts.map((cake) => (
-                        <tr key={cake.id} className="hover:bg-[#1c120a] transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#0a0604] border border-[#39261a] shrink-0">
-                              <img src={cake.image} alt={cake.name} className="w-full h-full object-cover" />
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="font-serif font-bold text-sm text-[#faf3e8]">{cake.name}</div>
-                            {cake.badge && (
-                              <span className="text-[10px] text-[#e8b66f] font-semibold">{cake.badge} • </span>
-                            )}
-                            <span className="text-[11px] text-[#a89078] truncate max-w-xs block">{cake.description}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="bg-[#24170f] px-2 py-0.5 rounded text-[11px] text-[#dfcca9] capitalize">
-                              {cake.category}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-[#dfcca9]">{cake.portions}</td>
-                          <td className="py-3 px-4 font-mono font-bold text-[#e8b66f] text-sm">
-                            S/. {cake.basePrice.toFixed(2)}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <button
-                              onClick={() => handleTogglePopular(cake)}
-                              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-                                cake.isPopular
-                                  ? 'bg-[#d69c4f]/20 border-[#d69c4f] text-[#e8b66f]'
-                                  : 'bg-[#1b120c] border-[#39261a] text-[#5c4637] hover:text-[#faf3e8]'
-                              }`}
-                              title={cake.isPopular ? 'Activa en portada' : 'No en portada'}
-                            >
-                              <Star className={`w-4 h-4 ${cake.isPopular ? 'fill-current' : ''}`} />
-                            </button>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => startEditProduct(cake)}
-                                className="p-1.5 rounded-lg bg-[#22150d] hover:bg-[#311e13] border border-[#d69c4f]/30 text-[#e8b66f] hover:text-white"
-                                title="Editar"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setProductToDelete(cake)}
-                                className="p-1.5 rounded-lg bg-red-950/30 hover:bg-red-900/40 border border-red-500/30 text-red-400 hover:text-white"
-                                title="Eliminar"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* =================================================================== */}
-        {/* TAB 2: CREATE / EDIT PRODUCT (SIDE-BY-SIDE WITH LIVE PREVIEW)       */}
-        {/* =================================================================== */}
-        {activeTab === 'new_product' && (
-          <div className="bg-[#150e09] border border-[#d69c4f]/40 rounded-3xl p-6 sm:p-8 shadow-xl">
-            
-            <div className="flex items-center justify-between pb-4 border-b border-[#2d1b11] mb-6">
-              <div>
-                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#faf3e8]">
-                  {editingProduct ? `Editar Torta: ${editingProduct.name}` : 'Crear Nueva Torta / Producto'}
-                </h2>
-                <p className="text-xs text-[#dfcca9]">
-                  Los cambios se guardan al instante y se reflejan en el catálogo público de la tienda.
-                </p>
-              </div>
-              <button
-                onClick={cancelForm}
-                className="px-3.5 py-1.5 rounded-xl border border-[#39261a] text-xs text-[#dfcca9] hover:bg-[#251911]"
-              >
-                Volver al Catálogo
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveProduct} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              {/* Left Column: Form Controls (7 cols) */}
-              <div className="lg:col-span-7 space-y-4">
-                
-                {/* Name */}
-                <div>
-                  <label className="block text-xs font-semibold text-[#faf3e8] mb-1.5">
-                    Nombre de la Torta / Producto *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder="Ej. Torta Selva Negra con Frutos del Bosque"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs sm:text-sm text-[#faf3e8] focus:outline-none focus:border-[#d69c4f]"
-                  />
-                </div>
-
-                {/* Category & Price */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#faf3e8] mb-1.5">
-                      Categoría *
-                    </label>
-                    <select
-                      value={formCategory}
-                      onChange={(e) => setFormCategory(e.target.value as CakeCategory)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs sm:text-sm text-[#faf3e8] focus:outline-none focus:border-[#d69c4f]"
-                    >
-                      {CAKE_CATEGORIES.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#faf3e8] mb-1.5">
-                      Precio Base (S/.) *
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono text-[#d69c4f]">
-                        S/.
-                      </span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="0.5"
-                        required
-                        value={formPrice}
-                        onChange={(e) => setFormPrice(parseFloat(e.target.value) || 0)}
-                        placeholder="85.00"
-                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs sm:text-sm text-[#faf3e8] font-mono focus:outline-none focus:border-[#d69c4f]"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Portions & Badge */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#faf3e8] mb-1.5">
-                      Porciones / Rendimiento
-                    </label>
-                    <input
-                      type="text"
-                      value={formPortions}
-                      onChange={(e) => setFormPortions(e.target.value)}
-                      placeholder="Ej. 20-25 porciones"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs sm:text-sm text-[#faf3e8] focus:outline-none focus:border-[#d69c4f]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#faf3e8] mb-1.5">
-                      Insignia / Badge (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={formBadge}
-                      onChange={(e) => setFormBadge(e.target.value)}
-                      placeholder="Ej. La Más Pedida, Especial, Nuevo"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs sm:text-sm text-[#faf3e8] focus:outline-none focus:border-[#d69c4f]"
-                    />
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-xs font-semibold text-[#faf3e8] mb-1.5">
-                    Descripción / Ingredientes & Acabados
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={formDescription}
-                    onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder="Describe los sabores, la técnica de decoración, frutos frescos y masa artesanal..."
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs text-[#faf3e8] focus:outline-none focus:border-[#d69c4f]"
-                  />
-                </div>
-
-                {/* Photo Presets & Custom Image */}
-                <div>
-                  <label className="block text-xs font-semibold text-[#faf3e8] mb-1.5">
-                    Foto del Producto (sube una foto o elige una del sitio)
-                  </label>
-
-                  {/* Subir foto propia */}
-                  <label className={`mb-2.5 w-full py-3 px-4 rounded-xl border border-dashed border-[#d69c4f]/50 bg-[#1f130b] hover:bg-[#2c1b10] text-xs text-[#faf3e8] font-semibold flex items-center justify-center gap-2 transition-colors focus-within:ring-2 focus-within:ring-[#d69c4f] ${uploading ? 'cursor-wait opacity-70' : 'cursor-pointer'}`}>
-                    <Upload className="w-4 h-4 text-[#e8b66f]" />
-                    <span>{uploading ? 'Subiendo foto…' : formImagePath ? 'Foto subida · cambiar por otra' : 'Subir foto (JPG, PNG o WebP · máx. 5 MB)'}</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handlePhotoFile}
-                      disabled={uploading}
-                      className="sr-only"
-                    />
-                  </label>
-
-                  {/* Preset thumbnails */}
-                  <div className="grid grid-cols-5 gap-2 p-2 bg-[#0a0604] rounded-xl border border-[#2d1b11] max-h-32 overflow-y-auto">
-                    {PRESET_PRODUCT_IMAGES.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => choosePreset(preset.url)}
-                        className={`relative rounded-lg overflow-hidden h-14 border transition-all cursor-pointer ${
-                          formImage === preset.url
-                            ? 'border-[#d69c4f] ring-2 ring-[#d69c4f]/50 scale-105'
-                            : 'border-[#39261a] opacity-70 hover:opacity-100'
-                        }`}
-                        title={preset.label}
-                      >
-                        <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Checkboxes */}
-                <div className="flex flex-wrap items-center gap-6 pt-1">
-                  <label className="flex items-center gap-2 text-xs text-[#dfcca9] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formIsPopular}
-                      onChange={(e) => setFormIsPopular(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#d69c4f] bg-[#0f0a07] border-[#39261a] focus:ring-0"
-                    />
-                    <span className="font-semibold text-[#faf3e8]">★ Mostrar como Especialidad Destacada en Inicio</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 text-xs text-[#dfcca9] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formIsCustomizable}
-                      onChange={(e) => setFormIsCustomizable(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#d69c4f] bg-[#0f0a07] border-[#39261a] focus:ring-0"
-                    />
-                    <span>100% Personalizable (bizcocho, rellenos)</span>
-                  </label>
-                </div>
-
-                {/* Flavors & Fillings */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#a89078] mb-1">
-                      Sabores de Bizcocho (separados por coma)
-                    </label>
-                    <input
-                      type="text"
-                      value={formFlavors}
-                      onChange={(e) => setFormFlavors(e.target.value)}
-                      placeholder="Vainilla, Chocolate, Marmoleado"
-                      className="w-full px-3 py-2 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs text-[#faf3e8]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[#a89078] mb-1">
-                      Rellenos Disponibles (separados por coma)
-                    </label>
-                    <input
-                      type="text"
-                      value={formFillings}
-                      onChange={(e) => setFormFillings(e.target.value)}
-                      placeholder="Fudge casero, Manjar blanco"
-                      className="w-full px-3 py-2 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs text-[#faf3e8]"
-                    />
-                  </div>
-                </div>
-
-                {/* Submit Buttons */}
-                <div className="pt-4 flex items-center justify-start gap-3">
-                  <button
-                    type="submit"
-                    disabled={busy || uploading}
-                    className="px-7 py-3 rounded-xl bg-gradient-to-r from-[#b97f33] to-[#d69c4f] hover:from-[#c88d3d] hover:to-[#e4ac61] text-[#150e09] font-bold text-sm tracking-wide shadow-xl transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait"
-                  >
-                    {busy ? 'Guardando…' : editingProduct ? 'Guardar Cambios del Producto' : 'Crear y Publicar Torta'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={cancelForm}
-                    className="px-5 py-3 rounded-xl border border-[#39261a] text-xs text-[#dfcca9] hover:bg-[#251911]"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-
-              </div>
-
-              {/* Right Column: Live Customer View Preview (5 cols) */}
-              <div className="lg:col-span-5 bg-[#0a0604] border border-[#39261a] p-5 rounded-2xl sticky top-24">
-                <div className="flex items-center gap-2 mb-3 text-xs text-[#a89078]">
-                  <Eye className="w-4 h-4 text-[#e8b66f]" />
-                  <span className="font-semibold uppercase tracking-wider text-[11px]">Vista Previa en Vivo para Clientes</span>
-                </div>
-
-                <div className="bg-[#150e09] border border-[#d69c4f]/40 rounded-2xl p-4 shadow-xl text-left">
-                  <div className="relative aspect-square rounded-xl overflow-hidden bg-[#0a0604] border border-[#39261a] mb-4 flex items-center justify-center">
-                    <img
-                      src={formImage || PRESET_PRODUCT_IMAGES[0].url}
-                      alt={formName || 'Vista Previa'}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/assets/tortas/chocolate-drip.webp';
-                      }}
-                    />
-
-                    {formBadge && (
-                      <span className="absolute top-2 left-2 bg-[#d69c4f] text-[#150e09] font-bold text-[10px] px-2.5 py-0.5 rounded-full shadow-md">
-                        {formBadge}
-                      </span>
-                    )}
-
-                    {formIsPopular && (
-                      <span className="absolute top-2 right-2 bg-[#1b120c]/90 text-[#e8b66f] border border-[#d69c4f]/50 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                        ★ Destacada en Inicio
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h4 className="font-serif text-lg font-bold text-[#faf3e8]">
-                      {formName || 'Nombre de la Torta'}
-                    </h4>
-                    <span className="text-lg font-mono font-bold text-[#e8b66f] shrink-0">
-                      S/. {Number(formPrice || 0).toFixed(2)}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-[#dfcca9] mb-3 line-clamp-3">
-                    {formDescription || 'Descripción de la torta artesanal elaborada con recetas tradicionales cajamarquinas.'}
-                  </p>
-
-                  <div className="text-xs text-[#a89078] mb-4 space-y-1">
-                    <p>Porciones: <strong className="text-[#faf3e8]">{formPortions || '20-25 porciones'}</strong></p>
-                    <p>Categoría: <strong className="text-[#e8b66f] capitalize">{formCategory}</strong></p>
-                  </div>
-
-                  <div className="w-full py-2.5 rounded-xl bg-[#b97f33] text-[#150e09] text-center font-bold text-xs">
-                    Cotizar por WhatsApp ↗
-                  </div>
-                </div>
-              </div>
-
-            </form>
-
-          </div>
-        )}
-
-        {/* =================================================================== */}
-        {/* TAB 3: CUENTA Y COPIA DE SEGURIDAD                                   */}
-        {/* =================================================================== */}
-        {activeTab === 'settings' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-            {/* Cambiar contraseña */}
-            <div className="bg-[#150e09] border border-[#2d1b11] p-6 sm:p-8 rounded-3xl shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-[#b97f33]/20 border border-[#d69c4f]/40 flex items-center justify-center text-[#e8b66f]">
-                  <KeyRound className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-serif text-lg font-bold text-[#faf3e8]">Cambiar contraseña</h3>
-                  <p className="text-xs text-[#dfcca9]">La que usas para entrar a este panel.</p>
-                </div>
-              </div>
-
-              <form onSubmit={handleUpdatePassword} className="space-y-4">
-                <div>
-                  <label htmlFor="admin-new-password" className="block text-xs font-semibold text-[#faf3e8] mb-1">
-                    Nueva contraseña (mínimo 10 caracteres)
-                  </label>
-                  <input
-                    id="admin-new-password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    minLength={10}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs text-[#faf3e8] focus:outline-none focus:border-[#d69c4f]"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="admin-confirm-password" className="block text-xs font-semibold text-[#faf3e8] mb-1">
-                    Repite la nueva contraseña
-                  </label>
-                  <input
-                    id="admin-confirm-password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f0a07] border border-[#39261a] text-xs text-[#faf3e8] focus:outline-none focus:border-[#d69c4f]"
-                  />
-                  {confirmPassword && newPassword !== confirmPassword && (
-                    <p className="text-[11px] text-red-300 mt-1">Las contraseñas no coinciden.</p>
-                  )}
-                </div>
-
-                {passwordSuccess && (
-                  <p className="text-xs text-emerald-400 flex items-center gap-1.5">
-                    <Check className="w-4 h-4" /> Contraseña actualizada.
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={!passwordValid || busy}
-                  className="w-full py-2.5 rounded-xl bg-[#d69c4f] hover:bg-[#e4ac61] text-[#150e09] font-bold text-xs disabled:opacity-50 transition-all cursor-pointer disabled:cursor-not-allowed"
-                >
-                  Guardar nueva contraseña
-                </button>
-              </form>
-            </div>
-
-            {/* Copia de seguridad */}
-            <div className="bg-[#150e09] border border-[#2d1b11] p-6 sm:p-8 rounded-3xl shadow-sm flex flex-col justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#b97f33]/20 border border-[#d69c4f]/40 flex items-center justify-center text-[#e8b66f]">
-                    <Download className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-lg font-bold text-[#faf3e8]">Copia de seguridad</h3>
-                    <p className="text-xs text-[#dfcca9]">
-                      El catálogo vive en la base de datos. Descarga una copia con tus tortas y precios cuando quieras.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleExportJSON}
-                  disabled={products.length === 0}
-                  className="w-full py-3 px-4 rounded-xl bg-[#1f130b] hover:bg-[#2c1b10] border border-[#d69c4f]/40 text-xs text-[#faf3e8] font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <Download className="w-4 h-4 text-[#e8b66f]" />
-                  <span>Descargar copia (.json)</span>
-                </button>
-              </div>
-
-              <button
-                onClick={() => void reload()}
-                className="self-start py-2 px-4 rounded-xl border border-[#39261a] text-xs text-[#dfcca9] hover:bg-[#251911] flex items-center gap-2 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-[#e8b66f]" />
-                <span>Volver a cargar el catálogo</span>
-              </button>
-            </div>
-
-          </div>
-        )}
-
-      </main>
-
-      {/* 3. CONFIRM DELETE DIALOG */}
-      {productToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#150e09] border border-red-500/50 rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-900/30 border border-red-500/40 flex items-center justify-center text-red-400 mx-auto mb-3">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <h4 className="font-serif text-lg font-bold text-[#faf3e8] mb-2">
-              ¿Eliminar {productToDelete.name}?
-            </h4>
-            <p className="text-xs text-[#dfcca9] mb-6">
-              Se retirará del catálogo de la web. Esta acción no se puede deshacer.
-            </p>
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={() => setProductToDelete(null)}
-                className="px-4 py-2 rounded-xl border border-[#39261a] text-xs text-[#dfcca9] hover:bg-[#251911]"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleDeleteProduct}
-                disabled={busy}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md disabled:opacity-60"
-              >
-                {busy ? 'Eliminando…' : 'Sí, Eliminar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
+      </form>
+    </dialog>
   );
 };

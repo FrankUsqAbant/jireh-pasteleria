@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, KeyRound, Lock } from 'lucide-react';
 import { LOGO_URL } from '../data/bakeryData';
 import { AdminProductsPage } from './AdminProductsPage';
 import { changePassword, friendlyError, getAdminStatus, hasSession, signIn, signOut } from './adminApi';
 import { supabaseConfig } from '../lib/supabase';
+import './admin.css';
 
 /** Minutos sin actividad tras los que se cierra la sesión del panel. */
 const IDLE_MINUTES = 60;
@@ -70,11 +70,9 @@ export const AdminApp: React.FC<{ onBackToStore: () => void }> = ({ onBackToStor
 
   return (
     <AuthLayout onBackToStore={onBackToStore}>
-      {screen === 'loading' && <p className="text-sm text-[#dfcca9]" aria-live="polite">Verificando sesión…</p>}
+      {screen === 'loading' && <p className="adm-nota" aria-live="polite">Verificando sesión…</p>}
       {screen === 'no_config' && (
-        <p className="text-sm text-[#dfcca9]">
-          Falta la configuración de Supabase (VITE_SUPABASE_URL y VITE_SUPABASE_KEY en .env.local).
-        </p>
+        <p className="adm-error">Falta la configuración de Supabase (VITE_SUPABASE_URL y VITE_SUPABASE_KEY en .env.local).</p>
       )}
       {screen === 'login' && (
         <LoginForm
@@ -85,47 +83,27 @@ export const AdminApp: React.FC<{ onBackToStore: () => void }> = ({ onBackToStor
           }}
         />
       )}
-      {screen === 'change_password' && (
-        <ChangePasswordForm onDone={() => setScreen('loading')} onCancel={() => void logout()} />
-      )}
+      {screen === 'change_password' && <ChangePasswordForm onDone={() => setScreen('loading')} onCancel={() => void logout()} />}
     </AuthLayout>
   );
 };
 
 /* ------------------------------------ piezas ------------------------------------ */
 
-const inputClass =
-  'w-full px-4 py-3 rounded-xl bg-[#0b0604] border border-[#d69c4f]/40 text-sm text-[#faf3e8] placeholder:text-[#88705b] focus:outline-none focus:border-[#e8b66f] focus:ring-2 focus:ring-[#e8b66f]/30';
-const buttonClass =
-  'w-full py-3.5 px-6 rounded-xl bg-[#d69c4f] hover:bg-[#e4ac61] text-[#150e09] font-bold text-sm tracking-wide shadow-xl transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait focus:outline-none focus-visible:ring-2 focus-visible:ring-[#faf3e8]';
-
 const AuthLayout: React.FC<{ onBackToStore: () => void; children: React.ReactNode }> = ({ onBackToStore, children }) => (
-  <div className="min-h-screen bg-[#0e0805] text-[#faf3e8] flex flex-col items-center justify-center p-4 selection:bg-[#d69c4f] selection:text-[#150e09]">
-    <div className="mb-6">
-      <button
-        onClick={onBackToStore}
-        className="inline-flex items-center gap-2 text-xs text-[#dfcca9] hover:text-[#faf3e8] bg-[#1a110a] hover:bg-[#28180e] border border-[#3d2719] px-4 py-2 rounded-full transition-colors cursor-pointer"
-      >
-        <ArrowLeft className="w-4 h-4 text-[#e8b66f]" />
-        <span>Volver a la tienda</span>
-      </button>
-    </div>
-
-    <main className="max-w-md w-full bg-[#150e09] border border-[#d69c4f]/40 rounded-3xl p-8 sm:p-10 text-center shadow-2xl">
-      <div className="w-20 h-20 rounded-full bg-[#faf3e8] border-2 border-[#d69c4f] p-1 mx-auto mb-5 shadow-lg overflow-hidden">
-        <img src={LOGO_URL} alt="JIRÉH" className="w-full h-full object-cover rounded-full" />
+  <div className="adm adm-acceso">
+    <main className="adm-acceso__caja">
+      <div className="adm-acceso__marca">
+        <img src={LOGO_URL} alt="" />
+        <h1>Panel de JIRÉH</h1>
+        <p>Administra las tortas de la tienda</p>
       </div>
-      <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#faf3e8] mb-1">Panel de Administración</h1>
-      <p className="text-xs text-[#dfcca9] mb-6">JIRÉH Panadería y Pastelería — Catálogo de tortas</p>
       {children}
     </main>
+    <button type="button" className="adm-volver" onClick={onBackToStore}>
+      Volver a la tienda
+    </button>
   </div>
-);
-
-const ErrorText: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p role="alert" className="text-xs text-red-300 flex items-center justify-center gap-1.5">
-    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {children}
-  </p>
 );
 
 const LoginForm: React.FC<{ notice: string | null; onDone: () => void }> = ({ notice, onDone }) => {
@@ -148,21 +126,18 @@ const LoginForm: React.FC<{ notice: string | null; onDone: () => void }> = ({ no
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4 text-left">
-      {notice && <p className="text-xs text-[#e8b66f] text-center">{notice}</p>}
-      <div>
-        <label htmlFor="admin-email" className="block text-xs font-semibold text-[#a89078] mb-1.5">Correo</label>
-        <input id="admin-email" type="email" autoComplete="username" required autoFocus value={email}
-          onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+    <form onSubmit={submit}>
+      {notice && <p className="adm-nota">{notice}</p>}
+      <div className="adm-campo">
+        <label htmlFor="admin-email">Correo</label>
+        <input id="admin-email" type="email" autoComplete="username" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
-      <div>
-        <label htmlFor="admin-password" className="block text-xs font-semibold text-[#a89078] mb-1.5">Contraseña</label>
-        <input id="admin-password" type="password" autoComplete="current-password" required value={password}
-          onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+      <div className="adm-campo">
+        <label htmlFor="admin-password">Contraseña</label>
+        <input id="admin-password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
-      {error && <ErrorText>{error}</ErrorText>}
-      <button type="submit" disabled={busy} className={buttonClass}>
-        <Lock className="w-4 h-4 inline mr-2 -mt-0.5" />
+      {error && <p role="alert" className="adm-error">{error}</p>}
+      <button type="submit" disabled={busy} className="adm-btn adm-btn--principal">
         {busy ? 'Ingresando…' : 'Ingresar'}
       </button>
     </form>
@@ -191,28 +166,23 @@ const ChangePasswordForm: React.FC<{ onDone: () => void; onCancel: () => void }>
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4 text-left">
-      <p className="text-xs text-[#e8b66f] text-center flex items-center justify-center gap-1.5">
-        <KeyRound className="w-4 h-4" /> Es tu primer ingreso: crea tu propia contraseña.
-      </p>
-      <div>
-        <label htmlFor="admin-new" className="block text-xs font-semibold text-[#a89078] mb-1.5">
-          Nueva contraseña (mínimo 10 caracteres)
-        </label>
-        <input id="admin-new" type="password" autoComplete="new-password" required minLength={10} autoFocus
-          value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+    <form onSubmit={submit}>
+      <p className="adm-nota">Es tu primer ingreso: crea tu propia contraseña.</p>
+      <div className="adm-campo">
+        <label htmlFor="admin-new">Nueva contraseña</label>
+        <input id="admin-new" type="password" autoComplete="new-password" required minLength={10} autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
+        <p className="adm-ayuda">Mínimo 10 caracteres.</p>
       </div>
-      <div>
-        <label htmlFor="admin-confirm" className="block text-xs font-semibold text-[#a89078] mb-1.5">Repite la contraseña</label>
-        <input id="admin-confirm" type="password" autoComplete="new-password" required value={confirm}
-          onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
-        {confirm && password !== confirm && <p className="text-[11px] text-red-300 mt-1">Las contraseñas no coinciden.</p>}
+      <div className="adm-campo">
+        <label htmlFor="admin-confirm">Repite la contraseña</label>
+        <input id="admin-confirm" type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        {confirm && password !== confirm && <p className="adm-ayuda" style={{ color: 'var(--fresa)' }}>Las contraseñas no coinciden.</p>}
       </div>
-      {error && <ErrorText>{error}</ErrorText>}
-      <button type="submit" disabled={!valid || busy} className={buttonClass}>
+      {error && <p role="alert" className="adm-error">{error}</p>}
+      <button type="submit" disabled={!valid || busy} className="adm-btn adm-btn--principal">
         {busy ? 'Guardando…' : 'Guardar y entrar'}
       </button>
-      <button type="button" onClick={onCancel} className="w-full text-xs text-[#a89078] hover:text-[#faf3e8] underline cursor-pointer">
+      <button type="button" onClick={onCancel} className="adm-volver" style={{ color: 'var(--muted)' }}>
         Cerrar sesión
       </button>
     </form>
