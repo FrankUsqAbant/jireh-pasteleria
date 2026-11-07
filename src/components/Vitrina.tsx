@@ -30,10 +30,13 @@ export const Vitrina: React.FC<{ products: CakeItem[] }> = ({ products }) => {
               >
                 <span className="torta__foto">
                   <img src={cake.image} alt="" loading="lazy" decoding="async" width={800} height={1000} />
+                  {cake.badge && <span className="torta__sello">{cake.badge}</span>}
                 </span>
                 <span className="torta__nombre">{cake.name}</span>
                 <span className="torta__precio">
-                  desde <span className="price">S/&nbsp;{cake.basePrice}</span>
+                  <span>
+                    desde <span className="price">S/&nbsp;{cake.basePrice}</span>
+                  </span>
                   <span className="torta__pedir">
                     Pedir<span className="sr-only"> por WhatsApp</span> <span aria-hidden="true">→</span>
                   </span>

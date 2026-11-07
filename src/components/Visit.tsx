@@ -1,10 +1,11 @@
 import React from 'react';
 import { useStoreOpen } from '../lib/useStoreStatus';
 import { STORE_PHONE, STORE_PHONE_DISPLAY, STORE_WHATSAPP_URL } from '../utils/orderCalculator';
+import { MapaEsquina } from './MapaEsquina';
 
 const MAPS_URL = 'https://www.google.com/maps/search/?api=1&query=Av.+San+Mart%C3%ADn+de+Porres+787,+Cajamarca,+Per%C3%BA';
 
-/** Visítanos (capa: bizcocho claro). Dónde está la tienda, cuándo abre y cómo llegar. */
+/** Visítanos: dónde está la tienda, cuándo abre y cómo llegar. */
 export const Visit: React.FC = () => {
   const open = useStoreOpen();
 
@@ -17,9 +18,6 @@ export const Visit: React.FC = () => {
             Av. San Martín de Porres&nbsp;787
           </h2>
           <p className="visit__city">Cajamarca, en el cruce con el Jr. Los Andes</p>
-        </div>
-
-        <div className="visit__info">
 
           <dl className="visit__facts">
             <div>
@@ -51,7 +49,9 @@ export const Visit: React.FC = () => {
           </div>
         </div>
 
-
+        <div className="visit__mapa">
+          <MapaEsquina href={MAPS_URL} />
+        </div>
       </div>
     </section>
   );
