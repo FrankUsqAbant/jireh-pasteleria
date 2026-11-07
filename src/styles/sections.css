@@ -634,3 +634,225 @@
     grid-column: 1 / -1;
   }
 }
+
+/* ====================== tortas: vitrina escalonada ====================== */
+/* La columna del medio baja un poco: se lee como una vitrina, no como una cuadrícula */
+@media (min-width: 900px) {
+  .tortas__grid > li:nth-child(3n + 2) {
+    transform: translateY(72px);
+  }
+  .tortas__more {
+    margin-top: calc(clamp(48px, 6vw, 72px) + 72px);
+  }
+}
+.torta__foto {
+  position: relative;
+}
+.torta__sello {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--bizcocho-claro);
+  color: var(--ganache);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  box-shadow: 0 4px 14px -6px rgba(42, 23, 16, 0.5);
+}
+.torta__precio > span:first-child {
+  color: var(--muted);
+}
+
+/* ========================== hechas en JIRÉH ========================== */
+.hechas {
+  background: var(--bizcocho-claro);
+  padding-block: 0 clamp(72px, 10vw, 140px);
+  overflow: clip;
+}
+.hechas__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding-top: clamp(40px, 6vw, 72px);
+  border-top: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+.hechas__title {
+  margin: 0;
+  font-size: var(--t-m);
+}
+.hechas__nota {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--t-s);
+}
+.hechas__tira {
+  display: flex;
+  width: max-content;
+  outline: none;
+}
+.hechas__tira:focus-visible {
+  outline: 2px solid var(--fresa);
+  outline-offset: 6px;
+}
+.hechas__lista {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 0 7px;
+  list-style: none;
+  animation: deslizar 70s linear infinite;
+}
+.hechas__lista img {
+  display: block;
+  width: clamp(140px, 12vw, 185px);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 14px;
+}
+.hechas__tira:hover .hechas__lista,
+.hechas__tira:focus-visible .hechas__lista {
+  animation-play-state: paused;
+}
+@keyframes deslizar {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hechas__tira {
+    width: auto;
+    overflow-x: auto;
+    padding-inline: var(--gutter);
+  }
+  .hechas__lista {
+    animation: none;
+  }
+  .hechas__lista[aria-hidden='true'] {
+    display: none;
+  }
+}
+
+/* ============================ mapa de la esquina ============================ */
+.visit__grid {
+  align-items: center;
+}
+.visit__copy {
+  grid-column: 1 / span 6;
+}
+.visit__mapa {
+  grid-column: 8 / span 5;
+}
+.visit__facts {
+  margin-top: clamp(28px, 4vw, 40px);
+}
+.mapa {
+  display: block;
+  position: relative;
+  border-radius: var(--radius);
+  overflow: clip;
+  color: var(--ganache);
+  text-decoration: none;
+  box-shadow: 0 30px 60px -40px rgba(42, 23, 16, 0.55);
+}
+.mapa svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.mapa__fondo {
+  fill: #efe1c4;
+}
+.mapa__manzana {
+  fill: #e6d4b1;
+}
+.mapa__avenida {
+  stroke: #fbf3e2;
+  stroke-width: 46;
+  fill: none;
+}
+.mapa__eje {
+  stroke: #e1c99d;
+  stroke-width: 2;
+  stroke-dasharray: 14 12;
+  fill: none;
+}
+.mapa__jiron {
+  stroke: #fbf3e2;
+  stroke-width: 26;
+  fill: none;
+}
+.mapa__calle {
+  font: 600 15px var(--f-text);
+  fill: #7a5a43;
+  letter-spacing: 0.02em;
+}
+.mapa__calle--chica {
+  font-size: 13px;
+}
+.mapa__gota {
+  fill: var(--fresa);
+}
+.mapa__punto {
+  fill: #fbf3e2;
+}
+.mapa__halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: latido 2.8s ease-out infinite;
+}
+.mapa__etiqueta {
+  fill: var(--ganache);
+}
+.mapa__nombre {
+  font: 400 17px var(--f-display);
+  fill: var(--bizcocho);
+}
+.mapa__abrir {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--bizcocho-claro);
+  font-size: var(--t-s);
+  font-weight: 600;
+  transition: transform 0.45s var(--settle), background 0.45s var(--settle);
+}
+@media (hover: hover) {
+  .mapa:hover .mapa__abrir {
+    transform: translateY(-3px);
+    background: #fff;
+  }
+}
+.mapa:focus-visible .mapa__abrir {
+  background: #fff;
+}
+@keyframes latido {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mapa__halo {
+    animation: none;
+  }
+}
+@media (max-width: 899px) {
+  .visit__copy,
+  .visit__mapa {
+    grid-column: 1 / -1;
+  }
+  .visit__mapa {
+    margin-top: 8px;
+  }
+}

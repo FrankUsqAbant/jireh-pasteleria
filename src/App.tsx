@@ -3,6 +3,7 @@ import { SiteHeader } from './components/SiteHeader';
 import { HeroCapas } from './components/HeroCapas';
 import { CakeBuilder } from './components/CakeBuilder';
 import { Vitrina } from './components/Vitrina';
+import { HechasEnJireh } from './components/HechasEnJireh';
 import { Visit } from './components/Visit';
 import { SiteFooter } from './components/SiteFooter';
 import type { LegalModalType } from './components/LegalModal';
@@ -56,6 +57,7 @@ export default function App() {
       <main id="contenido">
         <HeroCapas />
         <Vitrina products={products} />
+        <HechasEnJireh />
         <CakeBuilder />
         <Visit />
       </main>
