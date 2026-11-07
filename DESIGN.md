@@ -89,3 +89,19 @@ PIE (capa: base dorada sobre ganache)
 - "Desde 2007", RUC, redes sociales y la mayoría de fotos vienen de la exportación de AI Studio: confirmar con el cliente.
 - Reseñas: son de ejemplo y se muestran marcadas como tales.
 - Precios "desde" del catálogo: valores de la demo.
+
+## Decisiones tomadas en QA (2026-11-06)
+- **Reposo:** la única animación en reposo es la gota de ganache de la tajada (crece hasta 1.12 en 3.2 s). Es tan suave
+  que el detector de `shoot.mjs` no la registra (`idleMotion: false`); se deja así a propósito: el sitio debe sentirse delicado.
+- **Pre-render:** `npm run build` genera el HTML de la tienda (scripts/prerender.mjs) y React hidrata encima.
+  Celular simulado: LCP de 4.7 s a 1.7 a 2.1 s. Lo que depende de la hora (abierto/cerrado, fecha mínima) se calcula
+  después de cargar para que el HTML y el navegador coincidan.
+- **Peso:** imágenes del catálogo en WebP (de 3.9 MB a 0.43 MB por página). Host Grotesk es una sola fuente variable.
+- **Fotos reales:** `public/assets/reales/` son recortes de los mosaicos del Facebook del cliente (`fotos-fuente/`),
+  de unos 190 px: se ven suaves. Pedir al cliente las fotos originales en alta resolución.
+- **Foco:** fresa sobre fondos claros, manjar sobre ganache (contraste mayor a 3:1 en los dos).
+
+## Pendiente para publicar
+- URL definitiva → `canonical`, `og:image` (scripts/og.mjs de la skill), `sitemap.xml`.
+- Reemplazar: reseñas de ejemplo, fotos generadas por IA de AI Studio (`cropped/`, `seamless/`), "desde 2007", RUC,
+  medios de pago y zonas de entrega si no son exactos.

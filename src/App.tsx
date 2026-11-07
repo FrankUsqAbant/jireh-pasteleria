@@ -3,19 +3,21 @@ import { SiteHeader } from './components/SiteHeader';
 import { Hero } from './components/Hero';
 import { CakeBuilder } from './components/CakeBuilder';
 import { Seam } from './components/Seam';
-import { CakeCatalogSection } from './components/CakeCatalogSection';
-import { OrderStepsSection } from './components/OrderStepsSection';
-import { ContactLocationSection } from './components/ContactLocationSection';
-import { FooterSection } from './components/FooterSection';
-import { LibroReclamacionesModal } from './components/LibroReclamacionesModal';
-import { LegalModal, type LegalModalType } from './components/LegalModal';
+import { Vitrina } from './components/Vitrina';
+import { HowToOrder } from './components/HowToOrder';
+import { Visit } from './components/Visit';
+import { SiteFooter } from './components/SiteFooter';
+import type { LegalModalType } from './components/LegalModal';
 import { useCatalog } from './lib/catalog';
-import { goTo } from './lib/motion';
 
 // El panel (y la librería de Supabase Auth) solo se descarga al entrar a #admin.
 const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
+// Los modales legales también se descargan recién al abrirlos.
+const LibroReclamacionesModal = lazy(() => import('./components/LibroReclamacionesModal').then((m) => ({ default: m.LibroReclamacionesModal })));
+const LegalModal = lazy(() => import('./components/LegalModal').then((m) => ({ default: m.LegalModal })));
 
-const isAdminHash = () => window.location.hash === '#admin' || window.location.hash === '#adm';
+export const isAdminHash = () =>
+  typeof window !== 'undefined' && (window.location.hash === '#admin' || window.location.hash === '#adm');
 
 export default function App() {
   const { products } = useCatalog();
@@ -55,22 +57,26 @@ export default function App() {
 
       <main id="contenido">
         <Hero />
-        <Seam top="var(--ganache)" band="var(--manjar)" bottom="var(--manjar)" seed={3} />
+        <Seam top="var(--ganache)" band="var(--manjar)" bottom="var(--bizcocho)" seed={3} />
+        <Vitrina products={products} />
+        <Seam top="var(--bizcocho)" band="var(--ganache)" bottom="var(--manjar)" seed={7} />
         <CakeBuilder />
-
-        <CakeCatalogSection products={products} onOpenGallery={() => goTo('vitrina')} onSelectCake={() => goTo('arma')} />
-        <OrderStepsSection onOpenCustomOrder={() => goTo('arma')} />
-        <ContactLocationSection />
+        <Seam top="var(--manjar)" band="#fbf3e6" bottom="var(--bizcocho)" seed={11} />
+        <HowToOrder />
+        <Seam top="var(--bizcocho)" band="var(--manjar)" bottom="var(--bizcocho-claro)" seed={17} />
+        <Visit />
       </main>
 
-      <FooterSection
-        onOpenLibroReclamaciones={() => setIsLibroOpen(true)}
-        onOpenLegalModal={(type) => setLegalModalType(type)}
-        onOpenAdminModal={navigateToAdmin}
+      <SiteFooter
+        onOpenLibro={() => setIsLibroOpen(true)}
+        onOpenLegal={(type) => setLegalModalType(type)}
+        onOpenAdmin={navigateToAdmin}
       />
 
-      <LibroReclamacionesModal isOpen={isLibroOpen} onClose={() => setIsLibroOpen(false)} />
-      <LegalModal type={legalModalType} onClose={() => setLegalModalType(null)} />
+      <Suspense fallback={null}>
+        {isLibroOpen && <LibroReclamacionesModal isOpen onClose={() => setIsLibroOpen(false)} />}
+        {legalModalType && <LegalModal type={legalModalType} onClose={() => setLegalModalType(null)} />}
+      </Suspense>
     </>
   );
 }

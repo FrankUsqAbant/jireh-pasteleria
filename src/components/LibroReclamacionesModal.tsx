@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, BookText, CheckCircle2, ShieldCheck, Printer } from 'lucide-react';
 import { LibroReclamacionEntry } from '../types/bakery';
 import { STORE_RUC, STORE_ADDRESS } from '../utils/orderCalculator';
+import { enviarReclamo, RECLAMO_MENSAJES, ReclamoError } from '../lib/reclamos';
 
 interface LibroReclamacionesModalProps {
   isOpen: boolean;
@@ -12,8 +13,6 @@ export const LibroReclamacionesModal: React.FC<LibroReclamacionesModalProps> = (
   isOpen,
   onClose,
 }) => {
-  if (!isOpen) return null;
-
   const [submittedEntry, setSubmittedEntry] = useState<LibroReclamacionEntry | null>(null);
 
   const [formData, setFormData] = useState({
@@ -30,34 +29,47 @@ export const LibroReclamacionesModal: React.FC<LibroReclamacionesModalProps> = (
     consumerRequest: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [trap, setTrap] = useState('');
+
+  // Escape cierra la ventana
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const entry: LibroReclamacionEntry = {
-      id: `LR-2026-${Math.floor(10000 + Math.random() * 90000)}`,
-      fullName: formData.fullName,
-      documentType: formData.documentType,
-      documentNumber: formData.documentNumber,
-      phone: formData.phone,
-      email: formData.email,
-      address: formData.address,
-      serviceType: formData.serviceType,
-      claimedAmount: formData.claimedAmount,
-      claimType: formData.claimType,
-      details: formData.details,
-      consumerRequest: formData.consumerRequest,
-      createdAt: new Date().toLocaleDateString('es-PE', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    };
-    setSubmittedEntry(entry);
+    if (sending) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      const { code, createdAt } = await enviarReclamo(formData, trap);
+      setSubmittedEntry({
+        ...formData,
+        id: code,
+        createdAt: new Date(createdAt).toLocaleString('es-PE', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      });
+    } catch (err) {
+      setSendError(RECLAMO_MENSAJES[err instanceof ReclamoError ? err.tipo : 'red']);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+    <div role="dialog" aria-modal="true" aria-label="Libro de Reclamaciones" className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
       <div className="bg-[#1b120c] border border-[#d69c4f]/50 rounded-3xl max-w-2xl w-full p-6 sm:p-8 text-left shadow-2xl relative max-h-[92vh] overflow-y-auto">
         
         {/* Close Button */}
@@ -258,13 +270,32 @@ export const LibroReclamacionesModal: React.FC<LibroReclamacionesModalProps> = (
                 </div>
               </div>
 
+              {/* Campo trampa para bots: oculto para personas y lectores de pantalla */}
+              <input
+                type="text"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                value={trap}
+                onChange={(e) => setTrap(e.target.value)}
+                className="absolute -left-[9999px] w-px h-px opacity-0"
+              />
+
+              {sendError && (
+                <p role="alert" className="text-xs text-red-200 bg-[#2a1313] border border-red-500/40 rounded-xl px-3 py-2">
+                  {sendError}
+                </p>
+              )}
+
               {/* Submit Button */}
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-full bg-[#b97f33] hover:bg-[#d69c4f] text-[#150e09] font-bold text-sm transition-all shadow-md"
+                  disabled={sending}
+                  className="w-full py-3 rounded-full bg-[#b97f33] hover:bg-[#d69c4f] text-[#150e09] font-bold text-sm transition-all shadow-md disabled:opacity-60 disabled:cursor-wait"
                 >
-                  Registrar Hoja de Reclamación
+                  {sending ? 'Registrando…' : 'Registrar Hoja de Reclamación'}
                 </button>
               </div>
             </form>
@@ -291,7 +322,7 @@ export const LibroReclamacionesModal: React.FC<LibroReclamacionesModalProps> = (
               <p><strong className="text-white">Tipo:</strong> {submittedEntry.claimType} de {submittedEntry.serviceType}</p>
               <p><strong className="text-white">Establecimiento:</strong> {STORE_ADDRESS}</p>
               <p className="pt-2 border-t border-[#39261a] text-[11px] text-[#a89078]">
-                *Una copia ha sido enviada a su correo {submittedEntry.email}. Conforme a Ley, el plazo máximo de respuesta es de quince (15) días hábiles.
+                *Guarda este código. Te responderemos al correo {submittedEntry.email} en un plazo máximo de quince (15) días hábiles, conforme a Ley.
               </p>
             </div>
 

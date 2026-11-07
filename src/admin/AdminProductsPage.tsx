@@ -534,7 +534,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ onBackToSt
                           : 'bg-[#150e09] text-[#dfcca9] hover:bg-[#251911] border border-[#2d1b11]'
                       }`}
                     >
-                      <span>{cat.icon}</span>
+
                       <span>{cat.label}</span>
                       <span className="opacity-70 text-[10px]">({count})</span>
                     </button>
@@ -577,7 +577,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ onBackToSt
                           alt={cake.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/assets/cropped/torta_chocodrip.jpg';
+                            (e.target as HTMLImageElement).src = '/assets/cropped/torta_chocodrip.webp';
                           }}
                         />
 
@@ -800,7 +800,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ onBackToSt
                     >
                       {CAKE_CATEGORIES.map((cat) => (
                         <option key={cat.id} value={cat.id}>
-                          {cat.icon} {cat.label}
+                          {cat.label}
                         </option>
                       ))}
                     </select>
@@ -997,7 +997,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ onBackToSt
                       alt={formName || 'Vista Previa'}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/assets/cropped/torta_chocodrip.jpg';
+                        (e.target as HTMLImageElement).src = '/assets/cropped/torta_chocodrip.webp';
                       }}
                     />
 

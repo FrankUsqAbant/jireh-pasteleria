@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CakeSlice } from './CakeSlice';
 import { FILLINGS, FROSTINGS, HOUSE_CAKE, OCCASIONS, SPONGES, type CakeChoice } from '../data/layers';
 import { estimateCakePrice, generateWhatsAppOrderUrl } from '../utils/orderCalculator';
@@ -51,7 +51,9 @@ export const CakeBuilder: React.FC = () => {
   const [notes, setNotes] = useState('');
 
   const price = estimateCakePrice(portions, choice.frosting.specialty);
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  // La fecha mínima se calcula en el navegador (el HTML pre-renderizado no sabe qué día es hoy)
+  const [today, setToday] = useState<string | undefined>();
+  useEffect(() => setToday(new Date().toISOString().slice(0, 10)), []);
   const set = (patch: Partial<CakeChoice>) => setChoice((c) => ({ ...c, ...patch }));
 
   const summary = `${choice.sponge.label}, con ${choice.filling1.label.toLowerCase()} y ${choice.filling2.label.toLowerCase()}. Cobertura: ${choice.frosting.label.toLowerCase()}.`;

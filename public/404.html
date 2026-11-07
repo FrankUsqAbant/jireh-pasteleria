@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es-PE">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Página no encontrada · JIRÉH Panadería y Pastelería</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <style>
+      @font-face { font-family: 'Young Serif'; src: url('/fonts/young-serif-400-normal.woff2') format('woff2'); font-display: swap; }
+      @font-face { font-family: 'Host Grotesk'; src: url('/fonts/host-grotesk-variable.woff2') format('woff2'); font-display: swap; }
+      :root { --ganache: #2a1710; --bizcocho: #f3e4c7; --manjar: #d39a5b; --muted: #d9c3a5; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 32px 20px;
+        background: var(--ganache); color: var(--bizcocho); font: 400 1.05rem/1.55 'Host Grotesk', system-ui, sans-serif; text-align: center; }
+      main { max-width: 34rem; }
+      svg { width: min(260px, 70vw); height: auto; }
+      h1 { font: 400 clamp(2.2rem, 1.4rem + 4vw, 3.6rem)/1.05 'Young Serif', Georgia, serif; letter-spacing: -0.02em; margin: 24px 0 12px; }
+      p { color: var(--muted); margin: 0 0 28px; }
+      a { display: inline-flex; align-items: center; gap: .6em; min-height: 48px; padding: 0 1.4em; border-radius: 999px;
+        background: var(--bizcocho); color: var(--ganache); font-weight: 600; text-decoration: none; transition: background .45s cubic-bezier(.22,1,.36,1); }
+      a:hover, a:focus-visible { background: var(--manjar); }
+      a:focus-visible { outline: 2px solid var(--manjar); outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <!-- Una base dorada sin torta: aquí no hay ninguna capa -->
+      <svg viewBox="0 0 260 90" aria-hidden="true">
+        <ellipse cx="130" cy="78" rx="118" ry="7" fill="#000" opacity=".25" />
+        <rect x="8" y="60" width="244" height="12" rx="6" fill="#c9a14e" />
+        <rect x="58" y="30" width="144" height="30" rx="4" fill="none" stroke="#d9c3a5" stroke-width="1.5" stroke-dasharray="6 6" />
+      </svg>
+      <h1>Esta capa no existe</h1>
+      <p>La página que buscas ya no está en la vitrina. Vuelve al inicio y arma tu torta desde ahí.</p>
+      <a href="/">Volver a JIRÉH <span aria-hidden="true">→</span></a>
+    </main>
+  </body>
+</html>

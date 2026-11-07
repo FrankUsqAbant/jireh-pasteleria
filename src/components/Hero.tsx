@@ -1,12 +1,13 @@
 import React from 'react';
 import { CakeSlice } from './CakeSlice';
 import { HOUSE_CAKE } from '../data/layers';
-import { isStoreOpen, STORE_WHATSAPP_URL } from '../utils/orderCalculator';
+import { STORE_WHATSAPP_URL } from '../utils/orderCalculator';
+import { useStoreOpen } from '../lib/useStoreStatus';
 import { goTo } from '../lib/motion';
 
 /** Portada (capa: cobertura). La tajada de la casa se arma capa por capa al entrar. */
 export const Hero: React.FC = () => {
-  const status = isStoreOpen();
+  const open = useStoreOpen();
 
   return (
     <section id="inicio" className="hero" aria-labelledby="hero-title">
@@ -46,8 +47,8 @@ export const Hero: React.FC = () => {
           <div>
             <dt>Hoy</dt>
             <dd>
-              <span className="status-dot" data-open={status.isOpen || undefined} aria-hidden="true" />
-              {status.isOpen ? 'Abierto hasta las 10:00 p.m.' : 'Abrimos a las 2:00 p.m.'}
+              <span className="status-dot" data-open={open || undefined} aria-hidden="true" />
+              {open === null ? 'De 2:00 p.m. a 10:00 p.m.' : open ? 'Abierto hasta las 10:00 p.m.' : 'Abrimos a las 2:00 p.m.'}
             </dd>
           </div>
           <div>
