@@ -5,7 +5,7 @@ import React from 'react';
  * Es una ilustración (no a escala): solo muestra las dos calles reales y dónde está JIRÉH.
  */
 export const MapaEsquina: React.FC<{ href: string }> = ({ href }) => (
-  <a className="mapa" href={href} target="_blank" rel="noopener" aria-label="Abrir en Google Maps la ubicación de JIRÉH">
+  <a className="mapa" href={href} target="_blank" rel="noopener">
     <svg viewBox="0 0 560 420" role="img" aria-hidden="true">
       <defs>
         <pattern id="manzanas" width="70" height="70" patternUnits="userSpaceOnUse" patternTransform="rotate(-8)">
@@ -40,7 +40,7 @@ export const MapaEsquina: React.FC<{ href: string }> = ({ href }) => (
       </g>
     </svg>
     <span className="mapa__abrir">
-      Abrir en Google Maps <span aria-hidden="true">↗</span>
+      Abrir en Google Maps<span className="sr-only"> la ubicación de JIRÉH</span> <span aria-hidden="true">↗</span>
     </span>
   </a>
 );
