@@ -50,16 +50,24 @@ const BOARD_TOP = 540; // dónde empieza la base dorada a los costados
 /** Banda del cuerpo de la torta entre dos curvas. */
 const band = (upper: number, lower: number) => `M${front(upper, 'ltr')} L${front(lower, 'rtl')} Z`;
 
-/** Piezas en el orden en que llegan. `apoyo`: el punto más bajo de su borde, donde se aplasta al caer. */
-const PIECES = [
+/**
+ * Piezas en el orden en que llegan.
+ * - `apoyo`: el punto más bajo de su borde, donde se aplasta al caer.
+ * - `tapa`: centro (cy) de la elipse de crema que cierra la capa por arriba mientras está sola, para que
+ *   se vea como un disco sólido y no como un anillo hueco. La capa siguiente la cubre al apoyarse.
+ * La base dorada llega junto con la primera capa: así nunca se ve el hueco que la torta tapa en la foto.
+ */
+const PIECES: { id: string; apoyo: number; tapa?: number; d: string }[] = [
   {
     id: 'base',
     apoyo: H,
-    d: `M0,${BOARD_TOP} L${LEFT},${BOARD_TOP} L${front(BOTTOM, 'ltr')} L${RIGHT},${BOARD_TOP} L${W},${BOARD_TOP} L${W},${H} L0,${H} Z`,
+    tapa: L2,
+    // A los costados de la torta, entre la base y la segunda capa, la foto tiene restos del fondo:
+    // esa franja queda fuera durante la caída (al final se ve la foto entera).
+    d: `M0,${BOARD_TOP} L${LEFT - 45},${BOARD_TOP} L${LEFT - 45},${L2} L${front(L2, 'ltr')} L${RIGHT + 65},${L2} L${RIGHT + 65},${BOARD_TOP} L${W},${BOARD_TOP} L${W},${H} L0,${H} Z`,
   },
-  { id: 'capa1', apoyo: BOTTOM + RY, d: band(L2, BOTTOM) },
-  { id: 'capa2', apoyo: L2 + RY, d: band(L3, L2) },
-  { id: 'capa3', apoyo: L3 + RY, d: band(TOP, L3) },
+  { id: 'capa2', apoyo: L2 + RY, tapa: L3, d: band(L3, L2) },
+  { id: 'capa3', apoyo: L3 + RY, tapa: TOP, d: band(TOP, L3) },
   {
     id: 'tapa',
     apoyo: TOP + RY,
@@ -105,6 +113,22 @@ export const HeroCapas: React.FC = () => (
                 <path d={p.d} />
               </clipPath>
             ))}
+            {/* Crema de la superficie de cada capa (colores tomados de la foto) */}
+            <radialGradient id="crema" cx="0.45" cy="0.4" r="0.7">
+              <stop offset="0" stopColor="#ecebe6" />
+              <stop offset="0.65" stopColor="#e2ddd2" />
+              <stop offset="1" stopColor="#cdc2b0" />
+            </radialGradient>
+            {/* Textura muy leve para que la crema no se vea plana */}
+            <filter id="crema-textura" x="0" y="0" width="100%" height="100%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves={2} seed={4} result="ruido" />
+              <feColorMatrix in="ruido" type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.38  0 0 0 0 0.3  0 0 0 0.18 0" result="grano" />
+              <feComposite in="grano" in2="SourceGraphic" operator="in" result="granoRecortado" />
+              <feMerge>
+                <feMergeNode in="SourceGraphic" />
+                <feMergeNode in="granoRecortado" />
+              </feMerge>
+            </filter>
             <radialGradient id="sombra-torta">
               <stop offset="0" stopColor="#000" stopOpacity="0.7" />
               <stop offset="1" stopColor="#000" stopOpacity="0" />
@@ -122,6 +146,9 @@ export const HeroCapas: React.FC = () => (
                 style={{ '--i': i, '--apoyo': `${CX}px ${p.apoyo}px` } as React.CSSProperties}
               >
                 <g className="pieza__aplasta">
+                  {p.tapa !== undefined && (
+                    <ellipse cx={CX} cy={p.tapa} rx={RX - 4} ry={RY - 2} fill="url(#crema)" filter="url(#crema-textura)" stroke="#c99a62" strokeOpacity={0.5} strokeWidth={6} />
+                  )}
                   <image href={IMG} width={W} height={H} clipPath={`url(#recorte-${p.id})`} />
                 </g>
               </g>
