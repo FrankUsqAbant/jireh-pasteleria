@@ -57,7 +57,8 @@
    0.4 s   cada capa cae (gravedad) y se asienta, cada 0.45 s; antes de tocar, su sombra
            crece sobre la capa de abajo
    1.85 s  las fresas caen una por una, con un leve giro y un pequeño rebote
-   3.3 s   se muestra la foto entera y se ocultan las piezas (así no quedan uniones visibles) */
+   Al terminar, las piezas quedan como la torta: coinciden píxel a píxel con la foto (verificado con
+   capturas). La foto entera solo se usa con movimiento reducido. */
 .torta-sombra {
   opacity: 0.5;
   transform-box: fill-box;
@@ -65,10 +66,7 @@
   animation: sombra-aparece 0.7s var(--settle) both;
 }
 .torta-entera {
-  animation: mostrar 0s linear 3.3s both;
-}
-.piezas {
-  animation: ocultar 0s linear 3.3s both;
+  display: none;
 }
 .pieza,
 .pieza__aplasta,
@@ -98,6 +96,22 @@
 }
 
 /* La caída acelera como un objeto soltado y se frena de golpe al tocar; el asentado absorbe el golpe */
+/* Todo espera a que lleguen las fotos (index.html agrega .torta-lista) */
+.torta-sombra,
+.pieza,
+.pieza__aplasta,
+.contacto,
+.fresa {
+  animation-play-state: paused;
+}
+.torta-lista .torta-sombra,
+.torta-lista .pieza,
+.torta-lista .pieza__aplasta,
+.torta-lista .contacto,
+.torta-lista .fresa {
+  animation-play-state: running;
+}
+
 @keyframes caer {
   from {
     opacity: 0;
@@ -182,26 +196,12 @@
     transform: none;
   }
 }
-@keyframes mostrar {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes ocultar {
-  from {
-    visibility: visible;
-  }
-  to {
-    visibility: hidden;
-  }
-}
 
 /* Movimiento reducido: la foto entera desde el principio */
 @media (prefers-reduced-motion: reduce) {
-  .torta-entera,
+  .torta-entera {
+    display: inline;
+  }
   .torta-sombra {
     animation: none;
   }

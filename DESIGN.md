@@ -124,3 +124,13 @@ El cliente rechazó la v1: "muy básica y llena de información" y la tajada dib
 - La tapa cae sin las fresas (mask con hueco difuminado relleno de crema); las 6 fresas, delineadas a mano
   sobre la foto, caen después una por una, inclinadas, se enderezan y dan un saltito. Termina a los 3.3 s.
 - Todo CSS; fuente de la foto recortada: fotos-fuente/portada-torta-recorte.png.
+
+## Portada v4 (2026-11-06): sin vacíos ni saltos
+- Revisión con animaciones congeladas y diferencia píxel a píxel contra la foto: las piezas en reposo coinciden
+  con la foto, así que ya no hay cambio final a la foto entera (solo se usa con movimiento reducido).
+- Tapa sin fresas pre-rellenada con la crema real de alrededor (scripts/preparar-portada.ts, contornos en
+  src/data/portada.ts): no hay máscaras ni crema sintética en la tapa.
+- La base y las franjas laterales siguen la curva real de la base dorada; la crema de cada capa usa el blanco
+  de la foto.
+- La animación espera a que llegue la foto (script en index.html, respaldo a los 4 s): en redes lentas no caen
+  piezas vacías. LCP móvil 2.2 a 2.5 s.
