@@ -51,11 +51,13 @@
   margin-inline: auto;
   overflow: visible;
 }
-/* ------------------------- la torta que cae por capas -------------------------
+/* ------------------------- la torta que se arma sola -------------------------
    CSS puro: corre desde que se pinta el HTML (no espera al JavaScript).
-   0 s    la base dorada con la primera capa aparece y se apoya
-   0.45 s cada capa cae desde poco más arriba, aparece con un fundido y se asienta, cada 0.42 s
-   2.4 s  se muestra la foto entera y se ocultan las piezas (así no quedan uniones visibles) */
+   0 s     la base dorada con la primera capa aparece y se apoya
+   0.4 s   cada capa cae (gravedad) y se asienta, cada 0.45 s; antes de tocar, su sombra
+           crece sobre la capa de abajo
+   1.85 s  las fresas caen una por una, con un leve giro y un pequeño rebote
+   3.3 s   se muestra la foto entera y se ocultan las piezas (así no quedan uniones visibles) */
 .torta-sombra {
   opacity: 0.5;
   transform-box: fill-box;
@@ -63,33 +65,46 @@
   animation: sombra-aparece 0.7s var(--settle) both;
 }
 .torta-entera {
-  animation: mostrar 0s linear 2.4s both;
+  animation: mostrar 0s linear 3.3s both;
 }
 .piezas {
-  animation: ocultar 0s linear 2.4s both;
+  animation: ocultar 0s linear 3.3s both;
 }
 .pieza,
-.pieza__aplasta {
+.pieza__aplasta,
+.contacto,
+.fresa {
   transform-box: view-box;
 }
 .pieza--base {
-  animation: base-aparece 0.7s var(--settle) both;
+  animation: base-aparece 0.6s var(--settle) both;
 }
 .pieza:not(.pieza--base) {
   /* --i: 1 a 3 (orden de llegada) */
-  animation: caer 0.6s cubic-bezier(0.42, 0, 0.78, 0.4) calc(0.45s + (var(--i) - 1) * 0.42s) both;
+  animation: caer 0.55s calc(0.4s + (var(--i) - 1) * 0.45s) both;
 }
 .pieza:not(.pieza--base) .pieza__aplasta {
   transform-origin: var(--apoyo);
-  animation: asentarse 0.6s var(--settle) calc(1.05s + (var(--i) - 1) * 0.42s) both;
+  animation: asentarse 0.6s var(--settle) calc(0.95s + (var(--i) - 1) * 0.45s) both;
+}
+.contacto {
+  transform-origin: 797px 470px;
+  opacity: 0;
+  animation: contacto 0.75s linear calc(0.4s + (var(--i) - 1) * 0.45s) both;
+}
+.fresa {
+  transform-origin: var(--centro);
+  animation: fresa 0.7s calc(1.85s + var(--j) * 0.14s) both;
 }
 
+/* La caída acelera como un objeto soltado y se frena de golpe al tocar; el asentado absorbe el golpe */
 @keyframes caer {
   from {
     opacity: 0;
-    transform: translateY(-340px);
+    transform: translateY(-300px);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.45);
   }
-  35% {
+  12% {
     opacity: 1;
   }
   to {
@@ -99,12 +114,51 @@
 }
 @keyframes asentarse {
   from {
-    transform: scaleY(0.975);
+    transform: scaleY(0.972);
   }
   55% {
     transform: scaleY(1.006);
   }
   to {
+    transform: none;
+  }
+}
+/* La sombra crece y se oscurece mientras la capa se acerca; al tocar queda tapada */
+@keyframes contacto {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  73% {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: none;
+  }
+}
+/* Cada fresa cae inclinada, se endereza al tocar y da un saltito antes de quedarse */
+@keyframes fresa {
+  from {
+    opacity: 0;
+    transform: translateY(-190px) rotate(var(--giro));
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.45);
+  }
+  10% {
+    opacity: 1;
+  }
+  68% {
+    opacity: 1;
+    transform: none;
+    animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1);
+  }
+  82% {
+    transform: translateY(-8px) rotate(calc(var(--giro) * -0.15));
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4);
+  }
+  to {
+    opacity: 1;
     transform: none;
   }
 }
