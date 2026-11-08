@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="docs/preview.webp" alt="JIRÉH Panadería y Pastelería: Tortas que se vuelven recuerdo. Torta desnuda con fresas y manzanilla sobre fondo chocolate." width="100%">
+  <a href="https://jireh-pasteleria.pages.dev/">
+    <img src="docs/preview.webp" alt="JIRÉH Panadería y Pastelería: Tortas que se vuelven recuerdo. Torta desnuda con fresas y manzanilla sobre fondo chocolate. Clic para ver el sitio." width="100%">
+  </a>
 </p>
 
 <h1 align="center">JIRÉH · Panadería y Pastelería</h1>
@@ -10,6 +12,7 @@
 </p>
 
 <p align="center">
+  <a href="https://jireh-pasteleria.pages.dev/"><b>🌐 Ver en vivo</b></a> ·
   <a href="#el-concepto">Concepto</a> ·
   <a href="#galería">Galería</a> ·
   <a href="#para-desarrolladores">Para desarrolladores</a>
@@ -21,6 +24,7 @@
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Supabase-3FCF8E?logo=supabase&logoColor=white" alt="Supabase">
+  <img src="https://img.shields.io/badge/Cloudflare_Pages-F38020?logo=cloudflare&logoColor=white" alt="Cloudflare Pages">
 </p>
 
 > **Tortas que se vuelven recuerdo.** Hechas a mano en Cajamarca, capa por capa.
